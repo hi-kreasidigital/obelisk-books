@@ -160,7 +160,6 @@ export function BookEditor({ id }: { id: string }) {
                   {BOOK_LANGS.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
                 </select>
               </Field>
-              <Field label="Publication date"><input className="input" type="date" value={book.publication_date ?? ''} disabled={!can.edit} onChange={(e) => set({ publication_date: e.target.value || null })} /></Field>
               <Field label="Publisher"><input className="input" value={book.publisher} disabled={!can.edit} onChange={(e) => set({ publisher: e.target.value })} /></Field>
               <Field label="Collection">
                 <select className="input" value={book.collection_id ?? ''} disabled={!can.edit}
@@ -281,7 +280,7 @@ function FormatCard({ format, coverUrl, onChange }: { format: Format; coverUrl: 
         <Field label="Sale price USD"><input className="input" inputMode="decimal" value={money.susd} disabled={!can.edit} onChange={(e) => setMoney({ ...money, susd: e.target.value })} /></Field>
         <Field label="Sale starts"><input className="input" type="datetime-local" value={dt(f.sale_starts_at)} disabled={!can.edit} onChange={(e) => set({ sale_starts_at: fromDt(e.target.value) })} /></Field>
         <Field label="Sale ends"><input className="input" type="datetime-local" value={dt(f.sale_ends_at)} disabled={!can.edit} onChange={(e) => set({ sale_ends_at: fromDt(e.target.value) })} /></Field>
-        <Field label="Release date" hint={f.availability === 'preorder' ? 'Shown as “Pre-order — published on …”' : undefined}>
+        <Field label="Release date" hint={f.availability === 'preorder' ? 'Shown as “Pre-order — published on …”' : 'Publication date of this format — shown on the book page and used for New releases.'}>
           <input className="input" type="date" value={f.release_date ?? ''} disabled={!can.edit} onChange={(e) => set({ release_date: e.target.value || null })} /></Field>
         <Field label="Pages"><input className="input" type="number" min={1} value={f.pages ?? ''} disabled={!can.edit} onChange={(e) => set({ pages: e.target.value ? Number(e.target.value) : null })} /></Field>
         {print && <>
