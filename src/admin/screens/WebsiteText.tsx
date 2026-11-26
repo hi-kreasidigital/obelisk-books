@@ -73,7 +73,7 @@ export function WebsiteText() {
 
   return (
     <>
-      <PageHeader title="Website text" sub={`${keys.length} texts from obelisk-website-text-en.docx v1.3. Keep {placeholders} exactly as in English.`} />
+      <PageHeader title="Website text" sub={`${keys.length} texts from obelisk-website-text-en.docx v1.4. Keep {placeholders} exactly as in English. Character limits are guides for search results and email subjects — longer text still saves.`} />
       <div className="flex flex-wrap gap-3 mb-3 items-end">
         <label><span className="label">Section</span>
           <select className="input" value={section} onChange={(e) => { setSection(Number(e.target.value)); setLimit(PAGE); }}>
