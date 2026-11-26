@@ -1,0 +1,12 @@
+---
+// "Save €x" for a complete-collection set, in the display currency (EUR in HTML, switched by the currency script)
+import Tpl from './Tpl.astro';
+import { getSite, money, setSavings, type T } from '../../lib/site/site';
+import type { Format } from '../../lib/site/types';
+interface Props { set: Format; lang: string; t: T; key?: string; class?: string; style?: string }
+const { set, lang, t, key = 'product.save', class: cls = 'pill', style } = Astro.props;
+const s = await getSite();
+const e = setSavings(s, set, 'EUR').save;
+const u = setSavings(s, set, 'USD').save;
+---
+{e > 0 && <span class={cls} style={style}><Tpl text={t(key)} name="amount"><span data-money data-eur={e} data-usd={u}>{money(e, 'EUR', lang)}</span></Tpl></span>}

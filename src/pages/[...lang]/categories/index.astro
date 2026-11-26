@@ -1,0 +1,25 @@
+---
+import Site from '../../../layouts/Site.astro';
+import Img from '../../../components/site/Img.astro';
+import { booksIn, categoriesIn, getSite, href, langPaths, staticAlternates, translator } from '../../../lib/site/site';
+export const getStaticPaths = langPaths;
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const L = lang.code;
+const t = translator(s, L);
+const books = booksIn(s, L);
+const topics = categoriesIn(s, L).map((c) => { const inCat = books.filter((b) => b.categoryIds.includes(c.id)); return { c, n: inCat.length, covers: inCat.map((b) => b.cover).filter(Boolean).slice(0, 3) }; });
+---
+<Site lang={L} title={`${t('categories.title')} | ${t('site.name')}`} description={t('categories.intro')} alternates={staticAlternates(s, '/categories')} crumbs={[{ name: t('categories.title') }]} active="categories">
+  <div class="wrap page-head"><h1>{t('categories.title')}</h1><p>{t('categories.intro')}</p></div>
+  <div class="wrap" style="padding-bottom:64px">
+    <div class="topics">
+      {topics.map(({ c, n, covers }) => (
+        <a class="topic" href={href(lang, `/categories/${c.tr[L].slug}`)}>
+          <span class="fan">{covers.map((m) => <Img media={m} alt="" widths={[72, 144]} sizes="72px" />)}</span>
+          <span class="name">{c.tr[L].name}</span><span class="count">{t('shop.count', { count: n })} →</span>
+        </a>
+      ))}
+    </div>
+  </div>
+</Site>

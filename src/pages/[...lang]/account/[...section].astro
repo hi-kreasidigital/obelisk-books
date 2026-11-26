@@ -1,0 +1,19 @@
+---
+// Account pages (overview, orders, ebook library, addresses, profile, delete) — wired to Supabase Auth in Phase 5.
+import ShellPage from '../../../components/site/ShellPage.astro';
+import { getSite, href, langParam, translator } from '../../../lib/site/site';
+export async function getStaticPaths() {
+  const SECTIONS = [[undefined, 'account.title'], ['orders', 'account.nav.orders'], ['library', 'library.title'], ['addresses', 'addresses.title'], ['profile', 'profile.title'], ['delete', 'delete.title']] as const;
+  const s = await getSite();
+  return s.languages.flatMap((l) => SECTIONS.map(([sec, key]) => ({ params: { lang: langParam(l), section: sec }, props: { lang: l.code, sec: sec ?? '', key } })));
+}
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const t = translator(s, lang.code);
+const { sec, key } = Astro.props;
+const nav = [['', 'account.nav.overview'], ['orders', 'account.nav.orders'], ['library', 'account.nav.library'], ['addresses', 'account.nav.addresses'], ['profile', 'account.nav.profile']];
+---
+<ShellPage lang={lang.code} path={sec ? `/account/${sec}` : '/account'} title={t(key)} soon wide>
+  <nav class="chips" aria-label={t('account.title')} style="margin:16px 0">{nav.map(([p, k]) => <a class="chip" href={href(lang, p ? `/account/${p}` : '/account')} aria-current={p === sec ? 'page' : undefined}>{t(k)}</a>)}</nav>
+  <p><a class="btn btn-teal" href={href(lang, '/sign-in')}>{t('nav.sign_in')}</a></p>
+</ShellPage>

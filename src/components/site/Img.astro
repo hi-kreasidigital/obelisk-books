@@ -1,0 +1,24 @@
+---
+// Build-time optimised image (WebP, responsive srcset) from a Supabase storage object.
+import { Image } from 'astro:assets';
+import type { Media } from '../../lib/site/types';
+interface Props {
+  media: Media | null | undefined; alt: string; widths: number[]; sizes: string;
+  class?: string; loading?: 'lazy' | 'eager'; priority?: boolean; fit?: 'cover' | 'contain';
+}
+const { media, alt, widths, sizes, class: cls, loading = 'lazy', priority = false } = Astro.props;
+const w = media?.width ?? undefined;
+const h = media?.height ?? undefined;
+const max = Math.max(...widths);
+const props: any = {
+  src: media?.url, alt, sizes, format: 'webp', quality: 78, class: cls,
+  widths: w ? widths.filter((x) => x <= w).concat(widths.every((x) => x > w) ? [w] : []) : widths,
+  ...(w && h ? { width: Math.min(w, max), height: Math.round((Math.min(w, max) / w) * h) } : { inferSize: true }),
+  loading: priority ? 'eager' : loading, fetchpriority: priority ? 'high' : undefined, decoding: priority ? 'sync' : 'async',
+};
+---
+{media ? (
+  <Image {...props} />
+) : (
+  <span class:list={[cls, "img-placeholder"]} role={alt ? "img" : undefined} aria-label={alt || undefined} aria-hidden={alt ? undefined : "true"} style="display:block;background:var(--surface)"></span>
+)}

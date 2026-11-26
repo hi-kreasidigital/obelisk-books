@@ -1,0 +1,20 @@
+---
+import Img from './Img.astro';
+import Thumb43 from './Thumb43.astro';
+import { date, href, type T } from '../../lib/site/site';
+import type { Article, Lang } from '../../lib/site/types';
+interface Props { a: Article; lang: Lang; t: T; topic?: string; latest?: boolean; showDate?: boolean }
+const { a, lang, t, topic, latest, showDate = false } = Astro.props;
+const tr = a.tr[lang.code];
+const url = href(lang, `/articles/${tr.slug}`);
+---
+<article class="post">
+  <a href={url} tabindex="-1" aria-hidden="true"><Thumb43 media={a.cover} /></a>
+  <div class="body">
+    <span class="meta">{[latest ? t('articles.latest') : null, topic, tr.minutes ? t('articles.reading_time', { minutes: tr.minutes }) : null].filter(Boolean).join(' · ')}</span>
+    <a class="t" href={url}>{tr.title}</a>
+    {tr.excerpt && <p class="ex">{tr.excerpt}</p>}
+    {showDate && <span class="small muted">{t('articles.published', { date: date(a.publishedAt, lang.code) })}</span>}
+    <a class="more" href={url} aria-label={`${t('articles.read')}: ${tr.title}`}>{t('articles.read')}</a>
+  </div>
+</article>

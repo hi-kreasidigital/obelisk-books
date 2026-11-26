@@ -1,0 +1,26 @@
+---
+import HelpPage from '../../components/site/HelpPage.astro';
+import { freeShipping, getSite, href, langPaths, productionDays, translator, withoutSentence } from '../../lib/site/site';
+export const getStaticPaths = langPaths;
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const t = translator(s, lang.code);
+const fs = freeShipping(s, lang.code);
+const vars = { production_days: productionDays(s), count: s.settings['ebooks.download_limit'] ?? 5, amount: fs ?? '' };
+const answer = (n: number) => t(`faq.a${n}`, vars).trim();
+const groups = [['ordering', [1, 2, 3, 4, 5]], ['shipping', [6, 7, 8, 9, 10]], ['ebooks', [11, 12, 14, 15]], ['returns', [16, 17]], ['account', [18, 19, 20]]] as const;
+const text = (n: number) => (n === 8 && !fs ? withoutSentence(s.text[lang.code]?.[`faq.a8`] ?? '', 'amount') : answer(n));
+const jsonld = [{ '@context': 'https://schema.org', '@type': 'FAQPage', inLanguage: lang.code,
+  mainEntity: groups.flatMap(([, qs]) => qs.map((n) => ({ '@type': 'Question', name: t(`faq.q${n}`), acceptedAnswer: { '@type': 'Answer', text: text(n) } }))) }];
+---
+<HelpPage lang={lang.code} path="/faq" title={t('faq.title')} metaTitle={t('meta.faq.title')} description={t('meta.faq.desc')} jsonld={jsonld}>
+  <div class="faq">
+    {groups.map(([g, qs]) => (
+      <section aria-labelledby={`g-${g}`}>
+        <h2 id={`g-${g}`}>{t(`faq.group.${g}`)}</h2>
+        {qs.map((n) => <details><summary>{t(`faq.q${n}`)}</summary><p>{text(n)}</p></details>)}
+      </section>
+    ))}
+  </div>
+  <div class="box box-tint" style="margin-top:36px"><p>{t('faq.still')} <a href={href(lang, '/contact')}>{t('faq.contact_cta')}</a></p></div>
+</HelpPage>

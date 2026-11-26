@@ -1,0 +1,273 @@
+---
+// Book page (print, paperback/hardcover selector) and ebook page — one static page per format family (roadmap §6.1).
+import Site from '../../layouts/Site.astro';
+import Img from './Img.astro';
+import Price from './Price.astro';
+import Tpl from './Tpl.astro';
+import Save from './Save.astro';
+import ProductCard from './ProductCard.astro';
+import PostCard from './PostCard.astro';
+import {
+  absolute, alternates, authorNames, availabilityUrl, bookUrl, card, clip, collectionBooks, collectionSets, date, ebookFormat, ebookUrl, getSite,
+  href, languageName, money, offerExtras, paragraphs, printFormats, productionDays, relatedArticles, relatedBooks, setSavings, translator,
+} from '../../lib/site/site';
+import type { Format } from '../../lib/site/types';
+interface Props { lang: string; id: string; kind: 'print' | 'ebook' }
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const L = lang.code;
+const t = translator(s, L);
+const { kind } = Astro.props;
+const b = s.book.get(Astro.props.id)!;
+const tr = b.tr[L];
+const formats = kind === 'print' ? printFormats(b) : [ebookFormat(b)!];
+const main = formats[0];
+const ebook = ebookFormat(b);
+const prints = printFormats(b);
+const author = authorNames(s, b.authors, t);
+const translators = authorNames(s, b.translators, t);
+const collection = b.collectionId ? s.collection.get(b.collectionId) : null;
+const colTr = collection?.tr[L];
+const category = b.categoryIds.map((id) => s.category.get(id)).find((c) => c?.tr[L]);
+const pageUrl = kind === 'print' ? bookUrl(lang, b) : ebookUrl(lang, b);
+const alts = alternates(s, (l) => (b.tr[l.code] ? (kind === 'print' ? bookUrl(l, b) : ebookUrl(l, b)) : null));
+const descParas = paragraphs(tr.description);
+const metaTitle = tr.seoTitle || (kind === 'print' ? t('meta.book.title', { title: tr.title, author, format: t(`format.${main.type}`) }) : t('meta.ebook.title', { title: tr.title, author }));
+const metaDesc = tr.seoDescription || clip(descParas.join(' ') || tr.subtitle || tr.title);
+const days = productionDays(s);
+const preview = ebook?.preview ?? [];
+
+const authorLinks = b.authors.map((id) => s.author.get(id)).filter(Boolean).map((a) => ({ a: a!, url: a!.tr[L] ? href(lang, `/authors/${a!.tr[L].slug}`) : null }));
+const firstAuthor = authorLinks[0];
+const cBooks = collection ? collectionBooks(s, collection.id, L) : [];
+const sets = collection ? collectionSets(s, collection.id) : [];
+const related = relatedBooks(s, b, L).map((x) => card(s, lang, (kind === 'ebook' ? ebookFormat(x) : printFormats(x)[0]) ?? x.formats[0], t)).filter(Boolean);
+const relArticles = relatedArticles(s, b, L);
+const fmtLabel = (f: Format) => t(`format.${f.type}`);
+const status = (f: Format) => f.availability === 'preorder' ? t('product.preorder', { date: date(f.releaseDate, L) })
+  : f.availability === 'out_of_print' ? t('product.out_of_print') : f.type === 'ebook' ? t('product.available_ebook') : t('product.available_print', { days });
+const specs = (f: Format) => [
+  [t('product.detail.isbn'), f.isbn], [t('filter.format'), f.type === 'ebook' ? t('format.ebook_detail') : fmtLabel(f)],
+  [t('product.detail.pages'), f.pages], [t('product.detail.published'), date(f.releaseDate, L)], [t('product.detail.publisher'), b.publisher],
+  [t('product.detail.language'), languageName(b.textLanguage, L)],
+  [t('product.detail.dimensions'), f.widthMm && f.heightMm ? `${f.widthMm} × ${f.heightMm} mm` : null], [t('product.detail.weight'), f.weightG ? `${f.weightG} g` : null],
+  [t('product.detail.file_formats'), f.type === 'ebook' ? 'EPUB, PDF' : null],
+  [t('product.detail.collection'), colTr ? `${colTr.name}${b.position ? ` · ${t('collection.book_number', { number: b.position })}` : ''}` : null],
+].filter(([, v]) => v != null && v !== '');
+
+// ---------- structured data: Book + Product with an Offer per currency; every edition as workExample
+const bookFormatUrl = { paperback: 'Paperback', hardcover: 'Hardcover', ebook: 'EBook' } as const;
+const coverAbs = b.cover?.url;
+const offers = (f: Format) => (['EUR', 'USD'] as const).map((c) => ({
+  '@type': 'Offer', price: (f.price[c] / 100).toFixed(2), priceCurrency: c, availability: availabilityUrl(f), url: absolute(pageUrl),
+  itemCondition: 'https://schema.org/NewCondition', seller: { '@id': 'https://www.obeliskbooks.com/#organization' },
+  ...(f.saleEndsAt ? { priceValidUntil: f.saleEndsAt.slice(0, 10) } : {}),
+  ...(f.availability === 'preorder' && f.releaseDate ? { availabilityStarts: f.releaseDate } : {}),
+  ...offerExtras(s, f.type !== 'ebook'),
+}));
+const people = (ids: string[]) => ids.map((id) => s.author.get(id)).filter(Boolean).map((a) => ({ '@type': 'Person', name: a!.name, ...(a!.tr[L] ? { url: absolute(href(lang, `/authors/${a!.tr[L].slug}`)) } : {}) }));
+const jsonld = [{
+  '@context': 'https://schema.org', '@type': ['Book', 'Product'], '@id': `${absolute(pageUrl)}#book`,
+  name: tr.title, ...(tr.subtitle ? { alternativeHeadline: tr.subtitle } : {}), description: metaDesc, url: absolute(pageUrl),
+  ...(coverAbs ? { image: coverAbs } : {}), author: people(b.authors), ...(b.translators.length ? { translator: people(b.translators) } : {}),
+  inLanguage: b.textLanguage, publisher: { '@type': 'Organization', name: b.publisher }, brand: { '@type': 'Brand', name: 'Obelisk Books' },
+  ...(main.isbn ? { isbn: main.isbn, gtin13: main.isbn, sku: main.isbn } : { sku: main.id }),
+  ...(main.pages ? { numberOfPages: main.pages } : {}), ...(main.releaseDate ? { datePublished: main.releaseDate } : {}),
+  bookFormat: `https://schema.org/${bookFormatUrl[main.type as keyof typeof bookFormatUrl]}`,
+  ...(colTr ? { isPartOf: { '@type': 'BookSeries', name: colTr.name, url: absolute(href(lang, `/collections/${colTr.slug}`)) }, ...(b.position ? { position: b.position } : {}) } : {}),
+  ...(category ? { genre: category.tr[L].name } : {}),
+  offers: offers(main),
+  workExample: b.formats.filter((f) => f.type !== 'bundle').map((f) => ({
+    '@type': 'Book', bookFormat: `https://schema.org/${bookFormatUrl[f.type as keyof typeof bookFormatUrl]}`, ...(f.isbn ? { isbn: f.isbn } : {}),
+    ...(f.pages ? { numberOfPages: f.pages } : {}), ...(f.releaseDate ? { datePublished: f.releaseDate } : {}),
+    url: absolute(f.type === 'ebook' ? ebookUrl(lang, b) : bookUrl(lang, b)), offers: offers(f),
+  })),
+}];
+const crumbs = [
+  { name: kind === 'print' ? t('nav.books') : t('nav.ebooks'), href: href(lang, kind === 'print' ? '/books' : '/ebooks') },
+  ...(category ? [{ name: category.tr[L].name, href: href(lang, `/categories/${category.tr[L].slug}`) }] : []),
+  { name: tr.title },
+];
+const coverAlt = t('alt.cover', { title: tr.title, author });
+---
+<Site lang={L} title={metaTitle} description={metaDesc} alternates={alts} image={b.cover} imageAlt={coverAlt} ogType="product" jsonld={jsonld} crumbs={crumbs} active={kind === 'print' ? 'books' : 'ebooks'}
+  ogExtra={[['product:price:amount', (main.price.EUR / 100).toFixed(2)], ['product:price:currency', 'EUR'], ...(main.isbn ? [['book:isbn', main.isbn] as [string, string]] : [])]}>
+  <div class="wrap product">
+    <div class="gallery">
+      <Img media={b.cover} alt={coverAlt} widths={[300, 420, 600, 840]} sizes="(max-width: 860px) 300px, 420px" class="cover-img" priority />
+      {b.gallery.length > 0 && <div class="thumbs">{b.gallery.slice(0, 4).map((m) => <Img media={m} alt={m.alt[L] ?? ''} widths={[56, 112]} sizes="56px" />)}</div>}
+      {kind === 'ebook' && preview.length > 0 && (
+        <p style="margin-top:14px;text-align:center"><button type="button" class="btn btn-block" data-preview="reader">{t('product.preview')}</button><span class="small muted">{t('product.read_preview_free', { count: preview.length })}</span></p>
+      )}
+    </div>
+
+    <div class="buybox" data-buy>
+      {colTr && <a class="eyebrow" style="text-decoration:none" href={href(lang, `/collections/${colTr.slug}`)}>{t('product.collection', { collection: colTr.name, number: b.position ?? '' })}</a>}
+      {kind === 'ebook' && <span class="badge" style="align-self:flex-start;border:1px solid var(--border)">{t('format.ebook_detail')}</span>}
+      <h1>{tr.title}</h1>
+      {tr.subtitle && <p class="sub">{tr.subtitle}</p>}
+      <p>{authorLinks.length > 0 && <Tpl text={t('product.by')} name="author">{authorLinks.map(({ a, url }, i) => <>{i > 0 && (i === authorLinks.length - 1 ? ` ${t('product.and')} ` : ', ')}{url ? <a href={url}>{a.name}</a> : a.name}</>)}</Tpl>}
+        {translators && <span class="muted"> · {t('product.translated_by', { translator: translators })}</span>}</p>
+      <p class="small muted">{t('lang.book_language', { language: languageName(b.textLanguage, L) })}</p>
+
+      {kind === 'print' && (
+        <fieldset class="format-choice">
+          <legend>{t('product.choose_format')}</legend>
+          {formats.map((f, i) => (
+            <label class="format-opt">
+              <input type="radio" name="format" value={f.id} checked={i === 0} data-type={f.type} data-title={tr.title} data-label={fmtLabel(f)}
+                data-eur={f.price.EUR} data-usd={f.price.USD} data-href={pageUrl} disabled={f.availability === 'out_of_print'} />
+              <b>{fmtLabel(f)}</b><span data-money data-eur={f.price.EUR} data-usd={f.price.USD}>{money(f.price.EUR, 'EUR', L)}</span>
+            </label>
+          ))}
+          {ebook && <a class="format-opt" href={ebookUrl(lang, b)}><b>{t('format.ebook')} →</b><span data-money data-eur={ebook.price.EUR} data-usd={ebook.price.USD}>{money(ebook.price.EUR, 'EUR', L)}</span></a>}
+        </fieldset>
+      )}
+      {kind === 'ebook' && <input type="radio" name="format" value={main.id} checked hidden data-title={tr.title} data-label={t('format.ebook')} data-eur={main.price.EUR} data-usd={main.price.USD} data-href={pageUrl} />}
+
+      {formats.map((f, i) => (
+        <div class="stack" data-for-format={f.id} hidden={i > 0}>
+          <div><Price price={f.price} regular={f.regular} onSale={f.onSale} lowest30={f.lowest30} lang={L} t={t} big vat /></div>
+          <p style="font-weight:600;color:var(--teal-text)">{status(f)}</p>
+          {f.availability === 'preorder' && <p class="small muted">{t('product.preorder_note')}</p>}
+        </div>
+      ))}
+
+      {main.availability !== 'out_of_print' ? (
+        <div class="qty-row">
+          {kind === 'print' && (
+            <div class="qty"><label for="qty" class="small">{t('product.quantity')}</label>
+              <div data-qty-wrap><button type="button" data-step="-1" aria-label="−1">−</button><input id="qty" data-qty type="number" min="1" max="20" value="1" inputmode="numeric" /><button type="button" data-step="1" aria-label="+1">+</button></div>
+            </div>
+          )}
+          <button type="button" class="btn btn-teal btn-lg" data-add="" data-title={tr.title}>{main.availability === 'preorder' ? t('btn.preorder') : t('btn.add_to_cart')}</button>
+        </div>
+      ) : <p class="notice">{t('product.unavailable')}</p>}
+      {kind === 'print' && <p class="small muted">{t('product.shipping_note')}</p>}
+
+      {kind === 'ebook' && (
+        <div class="box">
+          <b>{t('product.ebook_how')}</b>
+          <p class="muted">{t('product.ebook_includes')}. {t('product.ebook_how_text')}</p>
+        </div>
+      )}
+      {kind === 'ebook' && prints.length > 0 && (
+        <p><a href={bookUrl(lang, b)}>{t('product.also_print')} — {fmtLabel(prints[0])} <span data-money data-eur={prints[0].price.EUR} data-usd={prints[0].price.USD}>{money(prints[0].price.EUR, 'EUR', L)}</span></a></p>
+      )}
+      {b.retailerLinks.length > 0 && <p class="small">{t('product.other_retailers')} {b.retailerLinks.map((r, i) => <>{i > 0 && ', '}<a href={r.url} rel="noopener nofollow">{r.label}</a></>)}</p>}
+
+      {kind === 'print' && ebook && (
+        <div class="box box-tint">
+          <b>{t('product.start_now.title')}</b>
+          <p class="muted">{t('product.start_now.text')}</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            {preview.length > 0 && <button type="button" class="btn" data-preview="reader">{t('product.preview')}</button>}
+            <a href={ebookUrl(lang, b)} style="font-weight:700">{t('format.ebook')} — <span data-money data-eur={ebook.price.EUR} data-usd={ebook.price.USD}>{money(ebook.price.EUR, 'EUR', L)}</span></a>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+
+  {kind === 'ebook' && preview.length > 0 && (
+    <section class="wrap" style="padding-bottom:40px" aria-labelledby="h-first">
+      <h2 class="h2" id="h-first" style="font-size:28px;margin-bottom:6px">{t('product.read_first')}</h2>
+      <p class="small muted" style="margin-bottom:14px">{t('preview.hint')}</p>
+      <div class="preview-strip">
+        {preview.map((p, i) => <button type="button" data-preview="reader" data-page={i} aria-label={t('preview.page_alt', { number: i + 1, title: tr.title })}><Img media={{ id: `p${i}`, bucket: 'previews', path: '', url: p.url, width: p.width, height: p.height, alt: {} }} alt="" widths={[140, 280]} sizes="140px" /></button>)}
+      </div>
+    </section>
+  )}
+
+  <div class="wrap details-grid">
+    <section aria-labelledby="h-desc">
+      <h2 id="h-desc">{tr.headingH2 || t('product.description')}</h2>
+      {tr.headingH3 && <h3>{tr.headingH3}</h3>}
+      <div class="clamp" data-clamp>
+        <div class="clamp-body prose" style="font-size:17px">{descParas.map((p) => <p>{p}</p>)}</div>
+        <button type="button" class="btn" hidden data-more={t('btn.show_more')} data-less={t('btn.show_less')} aria-expanded="false">{t('btn.show_more')}</button>
+      </div>
+    </section>
+    <div class="stack" style="gap:40px">
+      <section aria-labelledby="h-details">
+        <h2 id="h-details">{t('product.details')}</h2>
+        {formats.map((f, i) => (
+          <dl class="specs" data-for-format={f.id} hidden={i > 0}>{specs(f).map(([k, v]) => <><dt>{k}</dt><dd>{v}</dd></>)}</dl>
+        ))}
+      </section>
+      {firstAuthor && firstAuthor.a.tr[L] && (
+        <section aria-labelledby="h-author">
+          <h2 id="h-author">{t('product.about_author')}</h2>
+          <div class="author-mini">
+            <Img media={firstAuthor.a.photo} alt={t('alt.author', { author: firstAuthor.a.name })} widths={[72, 144]} sizes="72px" />
+            <div class="stack">
+              <p>{paragraphs(firstAuthor.a.tr[L].bio)[0]}</p>
+              <p><a href={firstAuthor.url!}>{t('author.books', { author: firstAuthor.a.name })}</a>{firstAuthor.a.website && <> · <a href={firstAuthor.a.website} rel="noopener">{t('author.website')} ↗</a></>}</p>
+            </div>
+          </div>
+        </section>
+      )}
+    </div>
+  </div>
+
+  {colTr && sets.length > 0 && (
+    <div class="wrap">
+      <div class="set-box">
+        <div class="stack">
+          <span class="eyebrow" style="font-size:13px">{t('collection.only_here')}</span>
+          <b style="font-family:var(--head);font-size:24px;font-weight:500">{colTr.name}</b>
+          <span class="muted">{t('collection.includes', { count: cBooks.length })} · <Save set={sets[0]} lang={L} t={t} key="collection.save" class="" /></span>
+        </div>
+        <a class="btn btn-teal btn-lg" href={href(lang, `/collections/${colTr.slug}`)}>{t('collection.cta')}</a>
+      </div>
+    </div>
+  )}
+
+  {colTr && cBooks.length > 1 && (
+    <section class="wrap" style="padding-bottom:48px" aria-labelledby="h-col">
+      <div class="section-head"><h2 class="h2" id="h-col" style="font-size:28px">{t('product.collection_books')}</h2><a href={href(lang, `/collections/${colTr.slug}`)}>{t('collection.read_order')}</a></div>
+      <ol class="reading">
+        {cBooks.map((x) => { const pf = printFormats(x)[0] ?? x.formats[0]; return (
+          <li>
+            <span class="num">{x.position}</span>
+            <Img media={x.cover} alt="" widths={[76, 152]} sizes="76px" />
+            <div class="info">{x.id === b.id ? <b>{x.tr[L].title}</b> : <a href={printFormats(x).length ? bookUrl(lang, x) : ebookUrl(lang, x)}>{x.tr[L].title}</a>}<span class="small muted">{t('collection.book_number', { number: x.position ?? '' })}</span></div>
+            <div class="buy"><span class="price"><span data-money data-eur={pf.price.EUR} data-usd={pf.price.USD}>{money(pf.price.EUR, 'EUR', L)}</span></span></div>
+          </li>); })}
+      </ol>
+    </section>
+  )}
+
+  {related.length > 0 && (
+    <section class="wrap" style="padding-bottom:48px" aria-labelledby="h-rel">
+      <h2 class="h2" id="h-rel" style="font-size:28px;margin-bottom:20px">{t('product.related')}</h2>
+      <div class="grid">{related.map((c) => <ProductCard c={c!} lang={L} t={t} />)}</div>
+    </section>
+  )}
+  {relArticles.length > 0 && (
+    <section class="alt" aria-labelledby="h-rela">
+      <div class="wrap section">
+        <h2 class="h2" id="h-rela" style="font-size:28px;margin-bottom:20px">{t('product.related_articles')}</h2>
+        <div class="posts">{relArticles.map((a) => <PostCard a={a} lang={lang} t={t} topic={a.categoryIds.map((id) => s.category.get(id)?.tr[L]?.name).find(Boolean)} />)}</div>
+      </div>
+    </section>
+  )}
+
+  {preview.length > 0 && ebook && (
+    <dialog class="reader" id="reader" aria-labelledby="reader-title">
+      <div class="bar"><span id="reader-title">{t('preview.title', { title: tr.title })}</span><button type="button" class="icon-btn" data-close><span aria-hidden="true" style="font-size:24px">×</span><span class="sr-only">{t('preview.close')}</span></button></div>
+      <div class="stage">{preview.map((p, i) => <img data-src={p.url} alt={t('preview.page_alt', { number: i + 1, title: tr.title })} width={p.width ?? 800} height={p.height ?? 1200} />)}</div>
+      <div class="end" data-end hidden>
+        <b style="font-size:22px">{t('preview.end')}</b><p>{t('preview.end_text')}</p>
+        <button type="button" class="btn btn-orange btn-lg" data-add={ebook.id} data-title={tr.title} data-label={t('format.ebook')} data-eur={ebook.price.EUR} data-usd={ebook.price.USD} data-href={ebookUrl(lang, b)}>
+          <Tpl text={t('preview.buy')} name="price"><span data-money data-eur={ebook.price.EUR} data-usd={ebook.price.USD}>{money(ebook.price.EUR, 'EUR', L)}</span></Tpl>
+        </button>
+      </div>
+      <div class="foot">
+        <button type="button" class="btn" data-prev>‹ {t('preview.prev')}</button>
+        <span class="muted" data-page-label data-tpl={t('preview.page')}></span>
+        <button type="button" class="btn" data-next>{t('preview.next')} ›</button>
+      </div>
+    </dialog>
+  )}
+</Site>

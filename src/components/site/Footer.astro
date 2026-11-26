@@ -1,0 +1,45 @@
+---
+import { href, type T } from '../../lib/site/site';
+import type { Lang } from '../../lib/site/types';
+interface Props { lang: Lang; t: T; company: any; instagram: any; pinterest?: string | null }
+const { lang, t, company, instagram, pinterest } = Astro.props;
+const cols = [
+  [t('footer.shop'), [[t('nav.books'), '/books'], [t('nav.ebooks'), '/ebooks'], [t('nav.collections'), '/collections'], [t('nav.authors'), '/authors']]],
+  [t('footer.help'), [[t('nav.faq'), '/faq'], [t('footer.shipping'), '/shipping'], [t('footer.returns'), '/returns'], [t('footer.payment'), '/payment-methods'], [t('nav.contact'), '/contact'], [t('lookup.title'), '/order-lookup']]],
+  [t('footer.company'), [[t('nav.about'), '/about'], [t('nav.articles'), '/articles'], [t('footer.privacy'), '/privacy'], [t('footer.terms'), '/terms'], [t('footer.withdrawal'), '/right-of-withdrawal']]],
+] as const;
+const follow: [string, string, boolean][] = [
+  ...(instagram?.url ? [['Instagram', instagram.url, true] as [string, string, boolean]] : []),
+  ...(pinterest ? [['Pinterest', pinterest, true] as [string, string, boolean]] : []),
+  [t('footer.newsletter'), '#newsletter', false],
+];
+const methods = ['Visa', 'Mastercard', 'Amex', 'PayPal', 'iDEAL', 'Bancontact', 'Apple Pay', 'Google Pay'];
+---
+<footer class="site-footer">
+  <div class="wrap top">
+    <div class="brand">
+      <img src="/logo-round-192.png" width="96" height="96" alt={t('alt.logo')} loading="lazy" />
+      <p>{t('footer.about')}</p>
+      <div class="footer-prefs">
+        <button type="button" class="btn" data-menu-open aria-controls="mobile-menu">{t('lang.label')} · {t('currency.label')}</button>
+      </div>
+    </div>
+    {cols.map(([title, links]) => (
+      <details open>
+        <summary>{title}</summary>
+        <h2>{title}</h2>
+        <ul>{links.map(([label, p]) => <li><a href={href(lang, p)}>{label}</a></li>)}</ul>
+      </details>
+    ))}
+    <details open>
+      <summary>{t('footer.follow')}</summary>
+      <h2>{t('footer.follow')}</h2>
+      <ul>{follow.map(([label, url, ext]) => <li><a href={url} rel={ext ? 'noopener me' : undefined}>{label}</a></li>)}</ul>
+    </details>
+  </div>
+  <div class="wrap bottom">
+    <div class="pay"><span>{t('footer.secure')}</span>{methods.map((m) => <span class="m">{m}</span>)}</div>
+    <p>{t('footer.legal_line', { coc: company?.coc ?? '69586489', vat: company?.vat ?? 'NL857929161B02' })}</p>
+    <p>{t('footer.copyright', { year: new Date().getFullYear() })}</p>
+  </div>
+</footer>

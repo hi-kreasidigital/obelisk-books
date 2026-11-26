@@ -1,8 +1,12 @@
 name: Build and deploy
 
-# Builds on every push to main and deploys to Cloudflare Workers (static assets).
-# Needs repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.
-# Also runs on `repository_dispatch: publish` so the dashboard's "Publish site" button can trigger a rebuild (Phase 3).
+# Builds the public site from Supabase and deploys it to Cloudflare Workers.
+#  - push to main ............ code changes
+#  - repository_dispatch ...... the dashboard's "Publish site" button (Edge Function publish-site)
+#  - schedule (every 6 h) ..... scheduled articles/books go live, sales start/end, ECB exchange rates refresh
+#  - pull_request ............. build check + preview upload
+# Needs repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID. Build status is reported to the
+# dashboard through the Edge Function publish-status, authenticated with this workflow's OIDC token (no extra secret).
 on:
   push:
     branches: [main]
@@ -10,10 +14,23 @@ on:
   workflow_dispatch:
   repository_dispatch:
     types: [publish]
+  schedule:
+    - cron: '17 */6 * * *'
 
 concurrency:
   group: deploy-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  STATUS_URL: https://dguapjsdwtyjxfcuukgs.supabase.co/functions/v1/publish-status
+  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+  RUN_ID: ${{ github.event.client_payload.run_id }}
+  # Indexing stays off until Launch (Phase 9): set the repository variable SITE_INDEXING=true then.
+  PUBLIC_SITE_INDEXING: ${{ vars.SITE_INDEXING == 'true' && 'true' || 'false' }}
 
 jobs:
   build:
@@ -22,6 +39,13 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
+      - name: Report "running" to the dashboard
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
+        run: |
+          TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=obelisk-publish" | jq -r .value)
+          curl -sS -X POST "$STATUS_URL" -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+            -d "{\"run_id\":\"$RUN_ID\",\"github_run_id\":\"${{ github.run_id }}\",\"status\":\"running\",\"url\":\"$RUN_URL\",\"message\":\"${{ github.event_name }}\"}"
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
@@ -36,3 +60,11 @@ jobs:
       - name: Preview upload for pull requests
         if: github.event_name == 'pull_request' && env.CLOUDFLARE_API_TOKEN != ''
         run: npx wrangler versions upload --preview-alias pr-${{ github.event.number }}
+      - name: Report result to the dashboard
+        if: always() && github.event_name != 'pull_request'
+        continue-on-error: true
+        run: |
+          STATUS=$([ "${{ job.status }}" = "success" ] && echo success || echo failed)
+          TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=obelisk-publish" | jq -r .value)
+          curl -sS -X POST "$STATUS_URL" -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+            -d "{\"run_id\":\"$RUN_ID\",\"github_run_id\":\"${{ github.run_id }}\",\"status\":\"$STATUS\",\"url\":\"$RUN_URL\",\"message\":\"${{ github.event_name }}\"}"

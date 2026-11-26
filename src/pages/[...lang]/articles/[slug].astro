@@ -1,0 +1,84 @@
+---
+import Site from '../../../layouts/Site.astro';
+import Img from '../../../components/site/Img.astro';
+import ProductCard from '../../../components/site/ProductCard.astro';
+import PostCard from '../../../components/site/PostCard.astro';
+import Tpl from '../../../components/site/Tpl.astro';
+import Newsletter from '../../../components/site/Newsletter.astro';
+import { absolute, alternates, articlesIn, card, clip, date, ebookFormat, entityPaths, getSite, href, printFormats, stripHtml, topicOf, translator } from '../../../lib/site/site';
+export const getStaticPaths = () => entityPaths(articlesIn);
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const L = lang.code;
+const t = translator(s, L);
+const a = s.article.get(Astro.props.id)!;
+const tr = a.tr[L];
+const list = articlesIn(s, L);
+const idx = list.indexOf(a);
+const newer = list[idx - 1];
+const older = list[idx + 1];
+const author = a.authorId ? s.author.get(a.authorId) : null;
+const cat = a.categoryIds.map((id) => s.category.get(id)).find((c) => c?.tr[L]);
+const url = href(lang, `/articles/${tr.slug}`);
+const text = stripHtml(tr.html);
+const desc = tr.seoDescription || clip(tr.excerpt || text);
+const books = a.bookIds.map((id) => s.book.get(id)).filter((b) => b?.tr[L]).map((b) => card(s, lang, printFormats(b!)[0] ?? ebookFormat(b!)!, t)).filter(Boolean);
+const related = list.filter((x) => x !== a && x.categoryIds.some((c) => a.categoryIds.includes(c))).slice(0, 3);
+const updated = a.updatedAt.slice(0, 10) > a.publishedAt.slice(0, 10) ? a.updatedAt : null;
+// Rich text from the dashboard: lazy-load images, open external links safely
+const html = tr.html.replace(/<img /g, '<img loading="lazy" decoding="async" ').replace(/<a href="(https?:\/\/(?!www\.obeliskbooks\.com)[^"]+)"/g, '<a href="$1" rel="noopener"');
+const jsonld = [{
+  '@context': 'https://schema.org', '@type': 'Article', '@id': `${absolute(url)}#article`, headline: tr.title.slice(0, 110), description: desc, inLanguage: L,
+  url: absolute(url), mainEntityOfPage: absolute(url), datePublished: a.publishedAt, dateModified: a.updatedAt,
+  ...(a.cover ? { image: [a.cover.url] } : {}), wordCount: text.split(' ').length,
+  author: author ? { '@type': 'Person', name: author.name, ...(author.tr[L] ? { url: absolute(href(lang, `/authors/${author.tr[L].slug}`)) } : {}) } : { '@type': 'Organization', name: 'Obelisk Books', url: 'https://www.obeliskbooks.com/' },
+  publisher: { '@type': 'Organization', '@id': 'https://www.obeliskbooks.com/#organization', name: 'Obelisk Books', logo: { '@type': 'ImageObject', url: 'https://www.obeliskbooks.com/logo-round-512.png' } },
+  ...(cat ? { articleSection: cat.tr[L].name } : {}),
+  ...(a.bookIds.length ? { mentions: a.bookIds.map((id) => s.book.get(id)).filter((b) => b?.tr[L]).map((b) => ({ '@type': 'Book', name: b!.tr[L].title })) } : {}),
+}];
+---
+<Site lang={L} title={tr.seoTitle || t('meta.article.title', { title: tr.title })} description={desc} image={a.cover} ogType="article" jsonld={jsonld}
+  alternates={alternates(s, (l) => a.tr[l.code] ? href(l, `/articles/${a.tr[l.code].slug}`) : null)} active="articles"
+  crumbs={[{ name: t('nav.articles'), href: href(lang, '/articles') }, ...(cat ? [{ name: cat.tr[L].name, href: href(lang, `/categories/${cat.tr[L].slug}`) }] : []), { name: tr.title }]}
+  ogExtra={[['article:published_time', a.publishedAt], ['article:modified_time', a.updatedAt], ...(cat ? [['article:section', cat.tr[L].name] as [string, string]] : [])]}>
+  <header class="wrap article-head">
+    <span class="eyebrow">{[cat?.tr[L].name, tr.minutes ? t('articles.reading_time', { minutes: tr.minutes }) : null].filter(Boolean).join(' · ')}</span>
+    <h1>{tr.title}</h1>
+    <p class="muted">
+      {author && <><Tpl text={t('articles.by')} name="author">{author.tr[L] ? <a href={href(lang, `/authors/${author.tr[L].slug}`)}>{author.name}</a> : author.name}</Tpl> · </>}
+      <time datetime={a.publishedAt}>{t('articles.published', { date: date(a.publishedAt, L) })}</time>
+      {updated && <> · <time datetime={updated}>{t('articles.updated', { date: date(updated, L) })}</time></>}
+    </p>
+    <div class="share"><button type="button" class="btn" data-share>{t('btn.share')}</button><button type="button" class="btn" data-copy data-done={t('state.link_copied')}>{t('btn.copy_link')}</button></div>
+  </header>
+  <div class="wrap article-layout">
+    <article>
+      {a.cover && <div class="article-hero"><Img media={a.cover} alt={a.cover.alt[L] ?? ''} widths={[400, 700, 900, 1200]} sizes="(max-width: 960px) 100vw, 860px" priority /></div>}
+      <div class="prose" set:html={html} />
+      {cat && <p style="margin-top:28px">{t('articles.topic')}: <a class="chip" href={href(lang, `/categories/${cat.tr[L].slug}`)}>{cat.tr[L].name}</a></p>}
+      {(newer || older) && (
+        <nav class="prevnext" aria-label={t('nav.articles')}>
+          {older ? <a href={href(lang, `/articles/${older.tr[L].slug}`)} rel="prev"><small>‹ {t('articles.prev')}</small>{older.tr[L].title}</a> : <span />}
+          {newer ? <a href={href(lang, `/articles/${newer.tr[L].slug}`)} rel="next"><small>{t('articles.next')} ›</small>{newer.tr[L].title}</a> : <span />}
+        </nav>
+      )}
+    </article>
+    <aside class="stack" style="gap:28px">
+      {books.length > 0 && (
+        <section aria-labelledby="h-mentioned">
+          <h2 id="h-mentioned" style="font-size:20px;margin-bottom:14px">{t('articles.books')}</h2>
+          <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr))">{books.map((c) => <ProductCard c={c!} lang={L} t={t} sizes="160px" />)}</div>
+        </section>
+      )}
+      <Newsletter lang={lang} t={t} compact id="nl-side" />
+    </aside>
+  </div>
+  {related.length > 0 && (
+    <section class="alt" aria-labelledby="h-related">
+      <div class="wrap section">
+        <h2 class="h2" id="h-related" style="font-size:28px;margin-bottom:20px">{t('articles.related')}</h2>
+        <div class="posts">{related.map((r) => <PostCard a={r} lang={lang} t={t} topic={topicOf(s, r.categoryIds, L)} />)}</div>
+      </div>
+    </section>
+  )}
+</Site>

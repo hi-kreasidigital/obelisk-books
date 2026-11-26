@@ -2,10 +2,13 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "obelisk-books",
   "compatibility_date": "2026-11-26",
-  // Static assets only for now (no Worker code). Phase 4 adds the Worker for /api.
+  // Static site in ./dist; the Worker (src/worker.ts) only handles /api/* (Phase 3: /api/geo, Phase 4: cart & checkout).
+  "main": "./src/worker.ts",
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "404-page"
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/api/*"]
   },
   "workers_dev": true,
   "preview_urls": true

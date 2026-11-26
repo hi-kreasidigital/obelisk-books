@@ -1,0 +1,18 @@
+---
+import HelpPage from '../../components/site/HelpPage.astro';
+import { getSite, href, langPaths, translator } from '../../lib/site/site';
+export const getStaticPaths = langPaths;
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const t = translator(s, lang.code);
+---
+<HelpPage lang={lang.code} path="/returns" title={t('returns.title')} metaTitle={t('meta.returns.title')} description={t('returns.intro')}>
+  <p style="font-size:20px">{t('returns.intro')}</p>
+  <div class="content-section"><h2>{t('returns.how.title')}</h2>
+    <ol class="numbered"><li><span>{t('returns.step1')}</span></li><li><span>{t('returns.step2')}</span></li></ol>
+    <p>{t('returns.condition')}</p><p>{t('returns.costs')}</p><p>{t('returns.refund')}</p>
+  </div>
+  <div class="content-section"><h2>{t('returns.damaged.title')}</h2><p>{t('returns.damaged.text')}</p></div>
+  <div class="content-section"><h2>{t('returns.lost.title')}</h2><p>{t('returns.lost.text')}</p></div>
+  <p class="notice" style="margin-top:28px"><a href={href(lang, '/right-of-withdrawal')}>{t('returns.ebooks')}</a></p>
+</HelpPage>

@@ -1,0 +1,35 @@
+---
+// Category page: intro, books, articles on the topic (approved 25 Nov 2026)
+import Site from '../../../layouts/Site.astro';
+import Listing from '../../../components/site/Listing.astro';
+import PostCard from '../../../components/site/PostCard.astro';
+import { alternates, articlesIn, booksIn, categoriesIn, clip, entityPaths, getSite, href, listingCards, paragraphs, translator } from '../../../lib/site/site';
+export const getStaticPaths = () => entityPaths(categoriesIn);
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const L = lang.code;
+const t = translator(s, L);
+const c = s.category.get(Astro.props.id)!;
+const tr = c.tr[L];
+const books = booksIn(s, L).filter((b) => b.categoryIds.includes(c.id));
+const cards = listingCards(s, lang, t, 'all', books);
+const posts = articlesIn(s, L).filter((a) => a.categoryIds.includes(c.id)).slice(0, 6);
+const title = t('category.title', { category: tr.name });
+---
+<Site lang={L} title={tr.seoTitle || t('meta.category.title', { category: tr.name })} description={tr.seoDescription || clip(tr.intro || title)} image={c.image}
+  alternates={alternates(s, (l) => c.tr[l.code] ? href(l, `/categories/${c.tr[l.code].slug}`) : null)} crumbs={[{ name: t('categories.title'), href: href(lang, '/categories') }, { name: tr.name }]} active="categories"
+  jsonld={[{ '@context': 'https://schema.org', '@type': 'CollectionPage', name: title, inLanguage: L, about: { '@type': 'Thing', name: tr.name } }]}>
+  <div class="wrap page-head">
+    <h1>{title}</h1>
+    {paragraphs(tr.intro).map((p) => <p>{p}</p>)}
+  </div>
+  <Listing cards={cards} lang={lang} t={t} filters={['format', 'collection', 'author', 'availability']} />
+  {posts.length > 0 && (
+    <section class="alt" aria-labelledby="h-art">
+      <div class="wrap section">
+        <h2 class="h2" id="h-art" style="margin-bottom:20px">{t('nav.articles')} · {tr.name}</h2>
+        <div class="posts">{posts.map((a) => <PostCard a={a} lang={lang} t={t} topic={tr.name} />)}</div>
+      </div>
+    </section>
+  )}
+</Site>

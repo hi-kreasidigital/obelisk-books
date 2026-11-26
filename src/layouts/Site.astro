@@ -1,0 +1,118 @@
+---
+// Shared layout for every public page: head (SEO, hreflang, Open Graph, JSON-LD), header, footer, client config.
+import '../styles/site.css';
+import ssRegular from '@fontsource/source-sans-3/files/source-sans-3-latin-400-normal.woff2?url';
+import ssBold from '@fontsource/source-sans-3/files/source-sans-3-latin-700-normal.woff2?url';
+import oswald from '@fontsource/oswald/files/oswald-latin-600-normal.woff2?url';
+import Header from '../components/site/Header.astro';
+import Footer from '../components/site/Footer.astro';
+import Crumbs from '../components/site/Crumbs.astro';
+import Newsletter from '../components/site/Newsletter.astro';
+import { getImage } from 'astro:assets';
+import { INDEXING, OG_LOCALES, absolute, getSite, href, locale, translator } from '../lib/site/site';
+import type { Media } from '../lib/site/types';
+
+interface Props {
+  lang: string;
+  title: string;
+  description?: string;
+  /** language code → path of this page in that language (only languages where the page exists) */
+  alternates: Record<string, string>;
+  noindex?: boolean;
+  image?: Media | null;
+  imageAlt?: string;
+  ogType?: 'website' | 'article' | 'product' | 'profile' | 'book';
+  jsonld?: object[];
+  crumbs?: { name: string; href?: string }[];
+  active?: string;
+  ogExtra?: [string, string][];
+  newsletter?: boolean;
+}
+const p = Astro.props;
+const s = await getSite();
+const lang = s.lang(p.lang);
+const t = translator(s, lang.code);
+const path = p.alternates[lang.code] ?? Astro.url.pathname;
+const canonical = absolute(path);
+const robots = !INDEXING || p.noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large';
+const description = (p.description || t('site.meta_description')).slice(0, 300);
+
+let og = { url: absolute('/og-default.png'), w: 1200, h: 630 };
+if (p.image) {
+  const img = await getImage({ src: p.image.url, width: Math.min(p.image.width ?? 1200, 1200), ...(p.image.width && p.image.height ? { height: Math.round((Math.min(p.image.width, 1200) / p.image.width) * p.image.height) } : { inferSize: true }), format: 'jpg', quality: 82 });
+  og = { url: absolute(img.src), w: Number(img.attributes.width) || 1200, h: Number(img.attributes.height) || 630 };
+}
+
+const crumbs = p.crumbs ? [{ name: t('nav.home'), href: href(lang, '/') }, ...p.crumbs] : null;
+const jsonld = [...(p.jsonld ?? [])];
+if (crumbs) jsonld.push({
+  '@context': 'https://schema.org', '@type': 'BreadcrumbList',
+  itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, ...(c.href || i === crumbs.length - 1 ? { item: absolute(c.href ?? path) } : {}) })),
+});
+
+// Client config: everything the small browser script needs (texts in this language + banner texts per language)
+const banner: Record<string, { text: string; sw: string; stay: string }> = {};
+for (const l of s.languages) {
+  const tl = translator(s, l.code);
+  banner[l.code] = { text: tl('lang.banner', { language: l.native }), sw: tl('lang.banner_switch', { language: l.native }), stay: tl('lang.banner_stay') };
+}
+const config = {
+  lang: lang.code, locale: locale(lang.code), alternates: p.alternates, langs: s.languages.map((l) => ({ code: l.code, prefix: l.prefix, native: l.native })),
+  banner, search: `/search-index/${lang.prefix || 'en'}.json`, searchPage: href(lang, '/search'),
+  text: {
+    approx: t('currency.approx'), added: t('product.added'), viewCart: t('product.view_cart'), cont: t('product.continue_shopping'),
+    cartCount: t('nav.cart_count'), cart: t('nav.cart'), soon: t('state.coming_soon'), close: t('btn.close'), error: t('state.error'),
+    emailInvalid: t('form.email_invalid'), books: t('search.books'), authors: t('search.authors'), articles: t('search.articles'),
+  },
+};
+const company = s.settings['store.company'];
+const ogLocale = OG_LOCALES[lang.code] ?? lang.code.replace('-', '_');
+const xDefault = p.alternates.en;
+---
+<!doctype html>
+<html lang={lang.code}>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{p.title}</title>
+  <meta name="description" content={description} />
+  <meta name="robots" content={robots} />
+  <link rel="canonical" href={canonical} />
+  {!p.noindex && Object.entries(p.alternates).map(([code, u]) => <link rel="alternate" hreflang={code} href={absolute(u)} />)}
+  {!p.noindex && xDefault && <link rel="alternate" hreflang="x-default" href={absolute(xDefault)} />}
+  <link rel="alternate" type="application/rss+xml" title={`${t('site.name')} — ${t('nav.articles')}`} href={href(lang, '/rss.xml')} />
+  <link rel="preload" href={ssRegular} as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href={oswald} as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href={ssBold} as="font" type="font/woff2" crossorigin />
+  <link rel="icon" href="/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta name="theme-color" content="#007A82" />
+  <meta property="og:site_name" content={t('site.name')} />
+  <meta property="og:type" content={p.ogType ?? 'website'} />
+  <meta property="og:title" content={p.title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:url" content={canonical} />
+  <meta property="og:locale" content={ogLocale} />
+  {Object.keys(p.alternates).filter((c) => c !== lang.code).map((c) => <meta property="og:locale:alternate" content={OG_LOCALES[c] ?? c.replace('-', '_')} />)}
+  <meta property="og:image" content={og.url} />
+  <meta property="og:image:width" content={String(og.w)} />
+  <meta property="og:image:height" content={String(og.h)} />
+  {p.imageAlt && <meta property="og:image:alt" content={p.imageAlt} />}
+  {(p.ogExtra ?? []).map(([k, v]) => <meta property={k} content={v} />)}
+  <meta name="twitter:card" content="summary_large_image" />
+  {jsonld.map((j) => <script type="application/ld+json" set:html={JSON.stringify(j).replace(/</g, '\\u003c')} />)}
+  <script type="application/json" id="site-config" set:html={JSON.stringify(config).replace(/</g, '\\u003c')} />
+</head>
+<body>
+  <a class="skip" href="#main">{t('nav.skip')}</a>
+  <Header lang={lang} t={t} langs={s.languages} alternates={p.alternates} active={p.active} />
+  {crumbs && <Crumbs items={crumbs} label={t('nav.breadcrumb')} />}
+  <main id="main" tabindex="-1">
+    <slot />
+  </main>
+  {Astro.slots.has('after') ? <slot name="after" /> : p.newsletter !== false && <Newsletter lang={lang} t={t} />}
+  <Footer lang={lang} t={t} company={company} instagram={s.settings['social.instagram']} pinterest={s.settings['social.pinterest']?.url ?? null} />
+  <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+  <script>import '../client/site.ts';</script>
+</body>
+</html>

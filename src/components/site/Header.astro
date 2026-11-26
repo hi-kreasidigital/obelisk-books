@@ -1,0 +1,87 @@
+---
+import { href, type T } from '../../lib/site/site';
+import type { Lang } from '../../lib/site/types';
+interface Props { lang: Lang; t: T; langs: Lang[]; alternates: Record<string, string>; active?: string }
+const { lang, t, langs, alternates, active } = Astro.props;
+const nav = [
+  ['books', '/books', t('nav.books')], ['ebooks', '/ebooks', t('nav.ebooks')], ['collections', '/collections', t('nav.collections')],
+  ['categories', '/categories', t('nav.categories')], ['authors', '/authors', t('nav.authors')], ['articles', '/articles', t('nav.articles')],
+] as const;
+const short = (l: Lang) => (l.prefix || 'en').toUpperCase();
+const langLink = (l: Lang) => alternates[l.code] ?? href(l, '/');
+const icon = {
+  search: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+  globe: '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg>',
+  user: '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+  cart: '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 4h2l2.4 11h11l2-8H6.3"/><circle cx="9" cy="20" r="1.5"/><circle cx="17" cy="20" r="1.5"/></svg>',
+  menu: '<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
+};
+const searchAction = href(lang, '/search');
+---
+<div class="lang-banner" id="lang-banner" hidden role="region" aria-label={t('lang.label')}>
+  <div class="wrap"><span data-text></span><a data-switch href="/" hreflang=""></a><button type="button" data-stay></button></div>
+</div>
+<header class="site-header">
+  <div class="wrap bar">
+    <button type="button" class="icon-btn menu-btn" data-menu-open aria-controls="mobile-menu" aria-expanded="false"><Fragment set:html={icon.menu} /><span class="sr-only">{t('nav.menu')}</span></button>
+    <a class="logo" href={href(lang, '/')}><img src="/logo-square-128.png" width="64" height="64" alt={t('alt.logo')} /><span class="sr-only">{t('nav.home')}</span></a>
+    <nav class="main-nav" aria-label={t('nav.main')}>
+      {nav.map(([k, p, label]) => <a href={href(lang, p)} aria-current={active === k ? 'page' : undefined}>{label}</a>)}
+    </nav>
+    <form class="search-form" role="search" action={searchAction} method="get" data-search>
+      <label for="q-desktop" class="sr-only">{t('nav.search_button')}</label>
+      <input id="q-desktop" name="q" type="search" placeholder={t('nav.search_placeholder')} autocomplete="off" aria-autocomplete="list" aria-controls="suggest-desktop" />
+      <button type="submit" class="icon-btn"><Fragment set:html={icon.search} /><span class="sr-only">{t('nav.search_button')}</span></button>
+      <ul class="suggest" id="suggest-desktop" role="listbox" aria-label={t('search.suggestions')} hidden></ul>
+    </form>
+    <div class="tools">
+      <a class="icon-btn search-toggle" href={searchAction}><Fragment set:html={icon.search} /><span class="sr-only">{t('nav.search_button')}</span></a>
+      {langs.length > 1 && (
+        <details class="dropdown lang-dd">
+          <summary class="icon-btn" aria-label={`${t('lang.label')}: ${lang.native}`}><Fragment set:html={icon.globe} />{short(lang)}</summary>
+          <div class="dropdown-panel">
+            {langs.map((l) => <a href={langLink(l)} hreflang={l.code} lang={l.code} aria-current={l.code === lang.code ? 'true' : undefined} data-lang-choice={l.code}><b>{short(l)}</b> {l.native}</a>)}
+          </div>
+        </details>
+      )}
+      <details class="dropdown cur-dd">
+        <summary class="icon-btn" aria-label={t('currency.label')}><span data-cur-label>€ EUR</span> ▾</summary>
+        <div class="dropdown-panel" role="radiogroup" aria-label={t('currency.label')}>
+          <label><input type="radio" name="cur" value="auto" data-cur /> {t('currency.auto')}</label>
+          <label><input type="radio" name="cur" value="EUR" data-cur /> {t('currency.eur')}</label>
+          <label><input type="radio" name="cur" value="USD" data-cur /> {t('currency.usd')}</label>
+          <p>{t('currency.approx_note')}</p>
+        </div>
+      </details>
+      <a class="icon-btn account-link" href={href(lang, '/sign-in')}><Fragment set:html={icon.user} /><span class="sr-only">{t('nav.sign_in')}</span></a>
+      <a class="icon-btn" href={href(lang, '/cart')} data-cart-link><Fragment set:html={icon.cart} /><span class="cart-count" data-cart-count aria-hidden="true"></span><span class="sr-only" data-cart-sr>{t('nav.cart')}</span></a>
+    </div>
+  </div>
+</header>
+<div class="mobile-menu" id="mobile-menu" hidden role="dialog" aria-modal="true" aria-label={t('nav.menu')}>
+  <div class="top">
+    <a class="logo" href={href(lang, '/')}><img src="/logo-square-128.png" width="52" height="52" alt={t('alt.logo')} /></a>
+    <button type="button" class="icon-btn" data-menu-close><span aria-hidden="true" style="font-size:28px">×</span><span class="sr-only">{t('nav.close_menu')}</span></button>
+  </div>
+  <form class="search-form" role="search" action={searchAction} method="get">
+    <label for="q-mobile" class="sr-only">{t('nav.search_button')}</label>
+    <input id="q-mobile" name="q" type="search" placeholder={t('nav.search_placeholder')} />
+    <button type="submit" class="icon-btn"><Fragment set:html={icon.search} /><span class="sr-only">{t('nav.search_button')}</span></button>
+  </form>
+  <nav aria-label={t('nav.main')}>
+    {nav.map(([, p, label]) => <a href={href(lang, p)}>{label}<span aria-hidden="true">›</span></a>)}
+    <a href={href(lang, '/about')}>{t('nav.about')}<span aria-hidden="true">›</span></a>
+    <a href={href(lang, '/contact')}>{t('nav.contact')}<span aria-hidden="true">›</span></a>
+    <a href={href(lang, '/sign-in')}>{t('nav.sign_in')}<span aria-hidden="true">›</span></a>
+  </nav>
+  <div class="row">
+    {langs.length > 1 && (
+      <label class="field" style="flex:1"><span class="small">{t('lang.label')}</span>
+        <select data-lang-select>{langs.map((l) => <option value={langLink(l)} selected={l.code === lang.code}>{l.native}</option>)}</select>
+      </label>
+    )}
+    <label class="field" style="flex:1"><span class="small">{t('currency.label')}</span>
+      <select data-cur-select><option value="auto">{t('currency.auto')}</option><option value="EUR">{t('currency.eur')}</option><option value="USD">{t('currency.usd')}</option></select>
+    </label>
+  </div>
+</div>

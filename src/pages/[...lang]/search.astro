@@ -1,0 +1,58 @@
+---
+// Search results (noindex). Searches the static per-language index in the browser — no server (roadmap §5.7).
+import ShellPage from '../../components/site/ShellPage.astro';
+import { getSite, href, langPaths, translator } from '../../lib/site/site';
+export const getStaticPaths = langPaths;
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const t = translator(s, lang.code);
+---
+<ShellPage lang={lang.code} path="/search" title={t('search.title')} wide>
+  <div data-search-page data-t-results={t('search.results')} data-t-none={t('search.none')} data-t-books={t('search.books')} data-t-authors={t('search.authors')} data-t-articles={t('search.articles')}>
+    <form class="search-form" role="search" method="get" style="max-width:560px;flex:none;margin:16px 0 24px">
+      <label for="q-page" class="sr-only">{t('nav.search_button')}</label>
+      <input id="q-page" name="q" type="search" placeholder={t('nav.search_placeholder')} />
+      <button class="icon-btn" type="submit">{t('nav.search_button')}</button>
+    </form>
+    <h2 data-heading aria-live="polite" style="font-family:var(--head);font-weight:500;font-size:28px"></h2>
+    <div data-results></div>
+    <div data-none hidden class="stack" style="margin-top:12px">
+      <p class="muted">{t('search.none_text')}</p>
+      <div class="chips">
+        <a class="chip" href={href(lang, '/books')}>{t('nav.books')}</a><a class="chip" href={href(lang, '/ebooks')}>{t('nav.ebooks')}</a>
+        <a class="chip" href={href(lang, '/collections')}>{t('nav.collections')}</a><a class="chip" href={href(lang, '/categories')}>{t('nav.categories')}</a>
+      </div>
+    </div>
+  </div>
+</ShellPage>
+<script>
+  import { loadIndex, searchIndex } from '../../client/site';
+  const root = document.querySelector<HTMLElement>('[data-search-page]')!;
+  const q = new URLSearchParams(location.search).get('q')?.trim() ?? '';
+  const input = root.querySelector<HTMLInputElement>('input')!;
+  input.value = q;
+  (async () => {
+    if (!q) return;
+    document.title = `${q} · ${document.title}`;
+    const hits = searchIndex(await loadIndex(), q);
+    const d = root.dataset;
+    root.querySelector('[data-heading]')!.textContent = (hits.length ? d.tResults! : d.tNone!).replace('{count}', String(hits.length)).replace('{query}', q);
+    root.querySelector<HTMLElement>('[data-none]')!.hidden = hits.length > 0;
+    const out = root.querySelector('[data-results]')!;
+    for (const [type, label] of [['b', d.tBooks], ['a', d.tAuthors], ['p', d.tArticles]] as const) {
+      const group = hits.filter((h) => h.t === type);
+      if (!group.length) continue;
+      const sec = document.createElement('section'); sec.style.marginTop = '28px';
+      const h = document.createElement('h3'); h.textContent = `${label} (${group.length})`; h.style.marginBottom = '12px';
+      const ul = document.createElement('ul'); ul.className = 'suggest'; Object.assign(ul.style, { position: 'static', boxShadow: 'none' });
+      for (const e of group) {
+        const li = document.createElement('li'); const a = document.createElement('a'); a.href = e.u;
+        if (e.i) { const img = document.createElement('img'); img.src = e.i; img.alt = ''; img.width = 34; img.height = 48; img.loading = 'lazy'; a.append(img); }
+        const span = document.createElement('span'); span.textContent = e.n;
+        if (e.s) { const sm = document.createElement('small'); sm.textContent = e.s; span.append(sm); }
+        a.append(span); li.append(a); ul.append(li);
+      }
+      sec.append(h, ul); out.append(sec);
+    }
+  })();
+</script>

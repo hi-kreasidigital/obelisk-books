@@ -1,0 +1,13 @@
+---
+import ShellPage from '../../components/site/ShellPage.astro';
+import { getSite, href, langPaths, translator } from '../../lib/site/site';
+export const getStaticPaths = langPaths;
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const t = translator(s, lang.code);
+---
+<ShellPage lang={lang.code} path="/sign-in" title={t('signin.title')} text={t('signin.intro')} soon>
+  <form class="form" style="width:100%" data-newsletter><div class="field" style="text-align:left"><label for="si-email">{t('signin.email')}</label><input id="si-email" type="email" required autocomplete="email" /></div>
+  <button class="btn btn-teal btn-lg" type="submit">{t('signin.send')}</button><p class="small" data-nl-msg role="status"></p></form>
+  <p class="small muted">{t('signin.new')}</p><p><a href={href(lang, '/order-lookup')}>{t('lookup.title')}</a></p>
+</ShellPage>

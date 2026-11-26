@@ -1,0 +1,18 @@
+---
+// Functional pages (noindex): cart, checkout result, sign-in, account, order lookup, newsletter states.
+// The templates are in place now; Phases 4–5 connect them to Stripe, Supabase Auth and Resend.
+import Site from '../../layouts/Site.astro';
+import { getSite, staticAlternates, translator } from '../../lib/site/site';
+interface Props { lang: string; path: string; title: string; text?: string; soon?: boolean; wide?: boolean }
+const p = Astro.props;
+const s = await getSite();
+const t = translator(s, p.lang);
+---
+<Site lang={p.lang} title={`${p.title} | ${t('site.name')}`} alternates={staticAlternates(s, p.path)} noindex newsletter={false}>
+  <div class:list={[p.wide ? 'wrap' : 'center-page']} style={p.wide ? 'padding-top:32px;padding-bottom:64px' : undefined}>
+    <h1>{p.title}</h1>
+    {p.text && <p class="muted" style="font-size:18px">{p.text}</p>}
+    <slot />
+    {p.soon && <p class="notice">{t('state.coming_soon')}</p>}
+  </div>
+</Site>

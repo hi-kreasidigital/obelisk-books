@@ -1,0 +1,33 @@
+---
+import Site from '../../layouts/Site.astro';
+import Listing from './Listing.astro';
+import { getSite, href, listingCards, staticAlternates, translator } from '../../lib/site/site';
+interface Props { lang: string; kind: 'all' | 'print' | 'ebook' }
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const t = translator(s, lang.code);
+const { kind } = Astro.props;
+const cfg = {
+  all: { path: '/shop', title: t('shop.all.title'), intro: t('shop.all.intro'), metaT: t('meta.shop.title'), metaD: t('meta.shop.desc'), active: undefined },
+  print: { path: '/books', title: t('shop.print.title'), intro: t('shop.print.intro'), metaT: t('meta.print.title'), metaD: t('meta.print.desc'), active: 'books' },
+  ebook: { path: '/ebooks', title: t('shop.ebooks.title'), intro: t('shop.ebooks.intro'), metaT: t('meta.ebooks.title'), metaD: t('meta.ebooks.desc'), active: 'ebooks' },
+}[kind];
+const cards = listingCards(s, lang, t, kind);
+const jsonld = [{
+  '@context': 'https://schema.org', '@type': 'CollectionPage', name: cfg.title, description: cfg.metaD, inLanguage: lang.code,
+  mainEntity: { '@type': 'ItemList', numberOfItems: cards.length, itemListElement: cards.slice(0, 50).map((c, i) => ({ '@type': 'ListItem', position: i + 1, url: `https://www.obeliskbooks.com${c.href.split('#')[0]}`, name: c.title })) },
+}];
+---
+<Site lang={lang.code} title={cfg.metaT} description={cfg.metaD} alternates={staticAlternates(s, cfg.path)} crumbs={[{ name: cfg.title }]} active={cfg.active} jsonld={jsonld}>
+  <div class="wrap page-head">
+    <h1>{cfg.title}</h1>
+    <p>{cfg.intro}</p>
+    <div class="chips" style="margin-top:6px">
+      <a class="chip" href={href(lang, '/shop')} aria-current={kind === 'all' ? 'page' : undefined}>{t('shop.all.title')}</a>
+      <a class="chip" href={href(lang, '/books')} aria-current={kind === 'print' ? 'page' : undefined}>{t('shop.print.title')}</a>
+      <a class="chip" href={href(lang, '/ebooks')} aria-current={kind === 'ebook' ? 'page' : undefined}>{t('shop.ebooks.title')}</a>
+      <a class="chip" href={href(lang, '/collections')}>{t('shop.collections.title')}</a>
+    </div>
+  </div>
+  <Listing cards={cards} lang={lang} t={t} filters={kind === 'all' ? undefined : ['category', 'collection', 'author', 'availability']} />
+</Site>

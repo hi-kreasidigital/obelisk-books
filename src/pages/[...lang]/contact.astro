@@ -1,0 +1,41 @@
+---
+// Contact page. The form is sent through a Supabase Edge Function with Turnstile in Phase 5; until then it points to email.
+import Site from '../../layouts/Site.astro';
+import { getSite, href, langPaths, organization, staticAlternates, translator } from '../../lib/site/site';
+export const getStaticPaths = langPaths;
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const t = translator(s, lang.code);
+const c = s.settings['store.company'] ?? {};
+const subjects = ['order', 'ebook', 'book', 'press', 'other'];
+---
+<Site lang={lang.code} title={t('meta.contact.title')} description={t('meta.contact.desc')} alternates={staticAlternates(s, '/contact')} crumbs={[{ name: t('nav.contact') }]}
+  jsonld={[{ '@context': 'https://schema.org', '@type': 'ContactPage', inLanguage: lang.code, mainEntity: organization(s) }]}>
+  <div class="wrap page-head"><h1>{t('contact.title')}</h1><p>{t('contact.intro')}</p></div>
+  <div class="wrap two-col" style="padding-bottom:64px">
+    <form class="form" data-contact>
+      <div class="field"><label for="c-name">{t('contact.form.name')}</label><input id="c-name" name="name" required autocomplete="name" /></div>
+      <div class="field"><label for="c-email">{t('contact.form.email')}</label><input id="c-email" name="email" type="email" required autocomplete="email" /></div>
+      <div class="field"><label for="c-subject">{t('contact.form.subject')}</label><select id="c-subject" name="subject">{subjects.map((k) => <option value={k}>{t(`contact.form.subject.${k}`)}</option>)}</select></div>
+      <div class="field"><label for="c-order">{t('contact.form.order')} <span class="muted">{t('form.optional')}</span></label><input id="c-order" name="order" /></div>
+      <div class="field"><label for="c-msg">{t('contact.form.message')}</label><textarea id="c-msg" name="message" required></textarea></div>
+      <p class="small muted">{t('contact.form.consent')} <a href={href(lang, '/privacy')}>{t('footer.privacy')}</a></p>
+      <button class="btn btn-teal btn-lg" type="submit" style="align-self:flex-start">{t('contact.form.send')}</button>
+    </form>
+    <div class="stack" style="gap:16px">
+      <div class="box"><p>{t('contact.general')}</p><p>{t('contact.orders')}</p><p class="muted">{t('contact.response', { days: s.settings['contact.reply_days'] ?? 2 })}</p></div>
+      <div class="box"><b>{t('contact.company.title')}</b><p class="muted">{t('contact.company.text', { address: c.address ?? '', coc: c.coc ?? '', vat: c.vat ?? '' })}</p></div>
+    </div>
+  </div>
+</Site>
+<script>
+  for (const f of document.querySelectorAll<HTMLFormElement>('[data-contact]')) f.addEventListener('submit', (e) => {
+    // Phase 5 sends this through an Edge Function (Turnstile + Resend). Until then: open the visitor's email app.
+    e.preventDefault();
+    if (!f.reportValidity()) return;
+    const d = new FormData(f);
+    const subj = (f.querySelector('select') as HTMLSelectElement).selectedOptions[0].text + (d.get('order') ? ` — ${d.get('order')}` : '');
+    const body = `${d.get('message')}\n\n${d.get('name')} <${d.get('email')}>`;
+    location.href = `mailto:${d.get('subject') === 'order' ? 'order' : 'info'}@obeliskbooks.com?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+  });
+</script>

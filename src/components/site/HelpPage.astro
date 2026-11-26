@@ -1,0 +1,18 @@
+---
+// Help pages (FAQ, shipping, returns, payment methods, right of withdrawal) — shared template with side menu
+import Site from '../../layouts/Site.astro';
+import { getSite, href, staticAlternates, translator } from '../../lib/site/site';
+interface Props { lang: string; path: string; title: string; metaTitle: string; description?: string; jsonld?: object[]; noindex?: boolean }
+const p = Astro.props;
+const s = await getSite();
+const lang = s.lang(p.lang);
+const t = translator(s, lang.code);
+const links = [['/faq', t('nav.faq')], ['/shipping', t('footer.shipping')], ['/returns', t('footer.returns')], ['/payment-methods', t('footer.payment')], ['/right-of-withdrawal', t('footer.withdrawal')], ['/contact', t('nav.contact')]];
+---
+<Site lang={lang.code} title={p.metaTitle} description={p.description} alternates={staticAlternates(s, p.path)} crumbs={[{ name: p.title }]} jsonld={p.jsonld} noindex={p.noindex}>
+  <div class="wrap page-head"><h1>{p.title}</h1></div>
+  <div class="wrap help-layout">
+    <nav class="side-nav" aria-label={t('help.label')}><ul>{links.map(([u, l]) => <li><a href={href(lang, u)} aria-current={u === p.path ? 'page' : undefined}>{l}</a></li>)}</ul></nav>
+    <div class="prose" style="max-width:760px"><slot /></div>
+  </div>
+</Site>

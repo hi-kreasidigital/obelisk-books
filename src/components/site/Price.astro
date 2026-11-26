@@ -1,0 +1,18 @@
+---
+// Price in EUR (default in the HTML, the same for every visitor and search engine). The currency script
+// switches it to USD, or adds "Approx. ¥…" for other countries (roadmap §5.1).
+import { money, type T } from '../../lib/site/site';
+import type { Money } from '../../lib/site/types';
+interface Props { price: Money; regular?: Money; onSale?: boolean; lowest30?: Partial<Money>; lang: string; t: T; big?: boolean; vat?: boolean; approx?: boolean }
+const { price, regular, onSale, lowest30, lang, t, big = false, vat = false, approx = true } = Astro.props;
+const [lowPre, lowPost = ''] = t('product.lowest_30').split('{price}');
+const fmt = (m: Partial<Money>) => (m.EUR != null ? money(m.EUR, 'EUR', lang) : '');
+---
+<span class:list={[big ? 'price-big' : 'price']}>
+  <span data-money data-eur={price.EUR} data-usd={price.USD}>{fmt(price)}</span>{onSale && regular && <s data-money data-eur={regular.EUR} data-usd={regular.USD}>{fmt(regular)}</s>}
+  {vat && <span class="vat"> {t('product.price_incl_vat')}</span>}
+</span>
+{approx && <span class="approx" data-approx data-eur={price.EUR} data-usd={price.USD}></span>}
+{onSale && lowest30?.EUR != null && (
+  <span class="lowest">{lowPre}<span data-money data-eur={lowest30.EUR} data-usd={lowest30.USD ?? ''}>{fmt(lowest30)}</span>{lowPost}</span>
+)}

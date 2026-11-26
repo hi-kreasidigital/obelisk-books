@@ -1,0 +1,32 @@
+---
+import HelpPage from '../../components/site/HelpPage.astro';
+import { freeShipping, getSite, langPaths, money, productionDays, translator } from '../../lib/site/site';
+export const getStaticPaths = langPaths;
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const L = lang.code;
+const t = translator(s, L);
+const pd = productionDays(s);
+const fs = freeShipping(s, L);
+const regions = [...new Set(s.shipping.map((o) => o.region))];
+---
+<HelpPage lang={L} path="/shipping" title={t('shipping.title')} metaTitle={t('meta.shipping.title')} description={t('shipping.intro')}>
+  <p style="font-size:20px">{t('shipping.intro')}</p>
+  <div class="content-section"><h2>{t('shipping.how.title')}</h2><p>{t('shipping.how.text', { production_days: pd })}</p></div>
+  <div class="content-section"><h2>{t('shipping.options.title')}</h2><p>{t('shipping.options.text')}</p>
+    {regions.map((r) => (
+      <>
+        <h3>{r}</h3>
+        <ul>{s.shipping.filter((o) => o.region === r).map((o) => (
+          <li><b>{o.carrier} {o.service}</b> — <span data-money data-eur={o.price.EUR} data-usd={o.price.USD}>{money(o.price.EUR, 'EUR', L)}</span> · {o.tracked ? t('shipping.option.estimate', { min: o.min, max: o.max }) : t('shipping.option.untracked')}</li>
+        ))}</ul>
+      </>
+    ))}
+    <p class="small muted">{t('shipping.estimates_note')}</p>
+    {fs && <p>{t('shipping.free', { amount: fs })}</p>}
+  </div>
+  <div class="content-section"><h2>{t('shipping.tracking.title')}</h2><p>{t('shipping.tracking.text')}</p></div>
+  <div class="content-section"><h2>{t('shipping.customs.title')}</h2><p>{t('shipping.customs.text')}</p></div>
+  <div class="content-section"><h2>{t('shipping.ebooks.title')}</h2><p>{t('shipping.ebooks.text')}</p></div>
+  <p class="notice" style="margin-top:28px">{t('shipping.holidays')}</p>
+</HelpPage>

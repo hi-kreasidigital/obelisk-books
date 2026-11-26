@@ -1,0 +1,12 @@
+---
+import ArticleList from '../../../../components/site/ArticleList.astro';
+import { articlesIn, getSite, langParam } from '../../../../lib/site/site';
+export async function getStaticPaths() {
+  const s = await getSite();
+  return s.languages.flatMap((l) => {
+    const pages = Math.ceil(articlesIn(s, l.code).length / 12);
+    return Array.from({ length: Math.max(0, pages - 1) }, (_, i) => ({ params: { lang: langParam(l), n: String(i + 2) }, props: { lang: l.code, page: i + 2 } }));
+  });
+}
+---
+<ArticleList lang={Astro.props.lang} page={Astro.props.page} />

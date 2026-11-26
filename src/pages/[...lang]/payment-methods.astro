@@ -1,0 +1,12 @@
+---
+import HelpPage from '../../components/site/HelpPage.astro';
+import { getSite, langPaths, translator } from '../../lib/site/site';
+export const getStaticPaths = langPaths;
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const t = translator(s, lang.code);
+---
+<HelpPage lang={lang.code} path="/payment-methods" title={t('payment.title')} metaTitle={t('meta.payment.title')} description={t('payment.intro')}>
+  <p style="font-size:20px">{t('payment.intro')}</p>
+  <p>{t('payment.methods')}</p><p>{t('payment.currency')}</p><p>{t('payment.vat')}</p><p>{t('payment.receipt')}</p>
+</HelpPage>

@@ -1,0 +1,15 @@
+---
+// 4:3 thumbnail that never crops: the whole image (contain) over a tiny blurred copy made at build time.
+import { getImage } from 'astro:assets';
+import Img from './Img.astro';
+import type { Media } from '../../lib/site/types';
+interface Props { media: Media | null; sizes?: string; priority?: boolean }
+const { media, sizes = '(max-width: 720px) 92vw, 300px', priority = false } = Astro.props;
+const bg = media
+  ? await getImage({ src: media.url, width: 32, ...(media.width && media.height ? { height: Math.round((32 / media.width) * media.height) } : { inferSize: true }), format: 'webp', quality: 50 })
+  : null;
+---
+<div class="thumb43">
+  {bg && <img class="bg" src={bg.src} alt="" aria-hidden="true" width="32" height="24" loading="lazy" decoding="async" />}
+  <Img media={media} alt="" widths={[320, 480, 640]} sizes={sizes} class="fg" priority={priority} />
+</div>

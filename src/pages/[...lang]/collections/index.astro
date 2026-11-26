@@ -1,0 +1,37 @@
+---
+import Save from '../../../components/site/Save.astro';
+import Site from '../../../layouts/Site.astro';
+import Img from '../../../components/site/Img.astro';
+import { collectionBooks, collectionSets, collectionsIn, getSite, href, langPaths, money, setSavings, staticAlternates, translator, authorNames } from '../../../lib/site/site';
+export const getStaticPaths = langPaths;
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const L = lang.code;
+const t = translator(s, L);
+const list = collectionsIn(s, L).map((c) => {
+  const books = collectionBooks(s, c.id, L);
+  const set = collectionSets(s, c.id).sort((a, b) => a.price.EUR - b.price.EUR)[0];
+  return { c, books, set, save: set ? setSavings(s, set, 'EUR').save : 0, author: authorNames(s, [...new Set(books.flatMap((b) => b.authors))], t) };
+});
+---
+<Site lang={L} title={t('meta.collections.title')} description={t('meta.collections.desc')} alternates={staticAlternates(s, '/collections')} crumbs={[{ name: t('collection.list.title') }]} active="collections">
+  <div class="wrap page-head"><h1>{t('collection.list.title')}</h1><p>{t('collection.list.intro')}</p></div>
+  <div class="wrap" style="padding-bottom:64px">
+    {list.length ? (
+      <div class="collection-cards">
+        {list.map(({ c, books, set, save, author }) => (
+          <a class="collection-card" href={href(lang, `/collections/${c.tr[L].slug}`)}>
+            <span class="stacked-covers">{books.slice(0, 5).map((b) => <Img media={b.cover} alt="" widths={[92, 184]} sizes="92px" />)}</span>
+            <span class="stack" style="flex:1 1 200px;gap:6px">
+              {set && <span class="eyebrow" style="font-size:13px">{t('collection.only_here')}</span>}
+              <span class="name">{c.tr[L].name}</span>
+              {author && <span class="muted">{t('product.by', { author })}</span>}
+              <span class="muted" style="font-size:15px">{t('collection.includes', { count: books.length })}</span>
+              {set && <span class="price"><span data-money data-eur={set.price.EUR} data-usd={set.price.USD}>{money(set.price.EUR, 'EUR', L)}</span><Save set={set} lang={L} t={t} style="margin-left:6px" /></span>}
+            </span>
+          </a>
+        ))}
+      </div>
+    ) : <p class="muted">{t('shop.empty')}</p>}
+  </div>
+</Site>

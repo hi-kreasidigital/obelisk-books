@@ -1,0 +1,101 @@
+---
+// Collection page: books in reading order + complete set (paperback / hardcover / ebook — never mixed, roadmap §6.1)
+import Site from '../../../layouts/Site.astro';
+import Img from '../../../components/site/Img.astro';
+import Price from '../../../components/site/Price.astro';
+import Tpl from '../../../components/site/Tpl.astro';
+import {
+  absolute, alternates, authorNames, availabilityUrl, bookUrl, clip, collectionBooks, collectionSets, date, ebookFormat, ebookUrl, entityPaths, getSite,
+  href, money, offerExtras, paragraphs, printFormats, productionDays, setSavings, translator, collectionsIn,
+} from '../../../lib/site/site';
+export const getStaticPaths = () => entityPaths(collectionsIn);
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const L = lang.code;
+const t = translator(s, L);
+const c = s.collection.get(Astro.props.id)!;
+const tr = c.tr[L];
+const books = collectionBooks(s, c.id, L);
+const sets = collectionSets(s, c.id);
+const types = ['paperback', 'hardcover', 'ebook'] as const;
+const opts = types.map((ty) => ({ ty, set: sets.find((f) => f.bundleOf === ty) })).filter((o) => o.set || !books.every((b) => b.formats.some((f) => f.type === o.ty)));
+const first = sets.find((f) => f.bundleOf === 'paperback') ?? sets[0];
+const authorIds = [...new Set(books.flatMap((b) => b.authors))];
+const author = authorNames(s, authorIds, t);
+const mainAuthor = s.author.get(authorIds[0]);
+const pageUrl = href(lang, `/collections/${tr.slug}`);
+const desc = tr.seoDescription || clip(tr.intro ?? t('collection.list.intro'));
+const jsonld: object[] = [{
+  '@context': 'https://schema.org', '@type': 'BookSeries', name: tr.name, url: absolute(pageUrl), description: desc, inLanguage: L,
+  ...(author ? { author: authorIds.map((id) => ({ '@type': 'Person', name: s.author.get(id)?.name })) } : {}),
+  hasPart: books.map((b) => ({ '@type': 'Book', name: b.tr[L].title, position: b.position, url: absolute(printFormats(b).length ? bookUrl(lang, b) : ebookUrl(lang, b)) })),
+}];
+for (const set of sets) jsonld.push({
+  '@context': 'https://schema.org', '@type': 'Product', '@id': `${absolute(pageUrl)}#${set.bundleOf}-set`, name: `${tr.name} — ${t(`collection.set.${set.bundleOf}`)}`,
+  description: desc, brand: { '@type': 'Brand', name: 'Obelisk Books' }, sku: set.id, ...(books[0]?.cover ? { image: books[0].cover.url } : {}),
+  offers: (['EUR', 'USD'] as const).map((cur) => ({ '@type': 'Offer', price: (set.price[cur] / 100).toFixed(2), priceCurrency: cur, availability: availabilityUrl(set), url: absolute(pageUrl), itemCondition: 'https://schema.org/NewCondition', ...offerExtras(s, set.bundleOf !== 'ebook') })),
+});
+const days = productionDays(s);
+---
+<Site lang={L} title={tr.seoTitle || t('meta.collection.title', { collection: tr.name })} description={desc} alternates={alternates(s, (l) => c.tr[l.code] ? href(l, `/collections/${c.tr[l.code].slug}`) : null)}
+  image={books[0]?.cover} crumbs={[{ name: t('collection.list.title'), href: href(lang, '/collections') }, { name: tr.name }]} jsonld={jsonld} active="collections">
+  <div class="wrap product">
+    <div class="gallery"><span class="stacked-covers big">{books.slice(0, 5).map((b, i) => <Img media={b.cover} alt={t('alt.cover', { title: b.tr[L].title, author })} widths={[170, 340]} sizes="170px" priority={i === 0} />)}</span></div>
+    <div class="buybox">
+      <span class="eyebrow">{t('format.collection')} · {t('collection.count', { count: books.length })}</span>
+      <h1>{tr.name}</h1>
+      {author && <p>{t('product.by', { author })}</p>}
+      {paragraphs(tr.intro).map((p) => <p class="muted" style="font-size:18px">{p}</p>)}
+      {sets.length > 0 && (
+        <div class="box" data-buy>
+          <span class="eyebrow" style="font-size:13px">{t('collection.only_here')}</span>
+          <b style="font-size:20px">{t('collection.cta')}</b>
+          <p class="muted">{t('collection.set_intro', { count: books.length })}</p>
+          <fieldset class="format-choice">
+            <legend>{t('product.choose_format')}</legend>
+            {opts.map(({ ty, set }) => set ? (
+              <label class="format-opt"><input type="radio" name="format" value={set.id} checked={set === first} data-title={`${tr.name} — ${t(`collection.set.${ty}`)}`} data-label={t(`collection.set.${ty}`)} data-eur={set.price.EUR} data-usd={set.price.USD} data-href={pageUrl} />
+                <b>{t(`collection.set.${ty}`)}</b><span data-money data-eur={set.price.EUR} data-usd={set.price.USD}>{money(set.price.EUR, 'EUR', L)}</span></label>
+            ) : (
+              <span class="format-opt" aria-disabled="true"><b>{t(`collection.set.${ty}`)}</b><span class="small">{t('collection.set_unavailable')}</span></span>
+            ))}
+          </fieldset>
+          {sets.map((set) => { const sv = setSavings(s, set, 'EUR'); const su = setSavings(s, set, 'USD'); const m = (e: number, u: number) => <span data-money data-eur={e} data-usd={u}>{money(e, 'EUR', L)}</span>; return (
+            <div class="stack" data-for-format={set.id} hidden={set !== first}>
+              <div><Price price={set.price} lang={L} t={t} big vat />{sv.save > 0 && <span class="pill" style="margin-left:8px"><Tpl text={t('product.save')} name="amount">{m(sv.save, su.save)}</Tpl></span>}</div>
+              {sv.save > 0 && <p class="small muted"><Tpl text={t('collection.save')} name="amount">{m(sv.save, su.save)}</Tpl> · <s>{m(sv.separate, su.separate)}</s></p>}
+              <p style="font-weight:600;color:var(--teal-text)">{set.bundleOf === 'ebook' ? t('product.available_ebook') : t('product.available_print', { days })}</p>
+            </div>); })}
+          <button type="button" class="btn btn-teal btn-lg" data-add="" data-title={tr.name}>{t('collection.add')}</button>
+        </div>
+      )}
+    </div>
+  </div>
+  <section class="wrap" style="padding-bottom:48px" aria-labelledby="h-order">
+    <div class="section-head"><h2 class="h2" id="h-order">{t('collection.read_order')}</h2></div>
+    <ol class="reading">
+      {books.map((b) => { const p = printFormats(b)[0]; const e = ebookFormat(b); const url = p ? bookUrl(lang, b) : ebookUrl(lang, b); const main = p ?? e!; return (
+        <li>
+          <span class="num">{b.position}</span>
+          <Img media={b.cover} alt="" widths={[76, 152]} sizes="76px" />
+          <div class="info">
+            <span class="small muted">{t('collection.book_number', { number: b.position ?? '' })}</span>
+            <a href={url}>{b.tr[L].title}</a>
+            {b.tr[L].subtitle && <span class="small muted">{b.tr[L].subtitle}</span>}
+            {main.availability === 'preorder' && <span class="small" style="color:var(--teal-text);font-weight:700">{t('product.preorder', { date: date(main.releaseDate, L) })}</span>}
+            <span class="small">{p && <>{t(`format.${p.type}`)} <b data-money data-eur={p.price.EUR} data-usd={p.price.USD}>{money(p.price.EUR, 'EUR', L)}</b></>}{p && e && ' · '}{e && <a href={ebookUrl(lang, b)}>{t('format.ebook')} <b data-money data-eur={e.price.EUR} data-usd={e.price.USD}>{money(e.price.EUR, 'EUR', L)}</b></a>}</span>
+          </div>
+          <div class="buy">
+            <a class="btn" href={url}>{t('btn.view_book')}</a>
+          </div>
+        </li>); })}
+    </ol>
+  </section>
+  {mainAuthor?.tr[L] && (
+    <section class="wrap" style="padding-bottom:56px" aria-labelledby="h-a">
+      <h2 class="h2" id="h-a" style="font-size:28px;margin-bottom:14px">{t('product.about_author')}</h2>
+      <div class="author-mini"><Img media={mainAuthor.photo} alt={t('alt.author', { author: mainAuthor.name })} widths={[72, 144]} sizes="72px" />
+        <div class="stack"><p>{paragraphs(mainAuthor.tr[L].bio)[0]}</p><a href={href(lang, `/authors/${mainAuthor.tr[L].slug}`)}>{t('author.books', { author: mainAuthor.name })}</a></div></div>
+    </section>
+  )}
+</Site>

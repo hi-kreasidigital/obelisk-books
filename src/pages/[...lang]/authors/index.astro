@@ -1,0 +1,26 @@
+---
+import Site from '../../../layouts/Site.astro';
+import Img from '../../../components/site/Img.astro';
+import { authorsIn, booksIn, clip, getSite, href, langPaths, staticAlternates, translator } from '../../../lib/site/site';
+export const getStaticPaths = langPaths;
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const L = lang.code;
+const t = translator(s, L);
+const books = booksIn(s, L);
+const list = authorsIn(s, L).map((a) => ({ a, n: books.filter((b) => b.authors.includes(a.id)).length }));
+---
+<Site lang={L} title={t('meta.authors.title')} description={t('meta.authors.desc')} alternates={staticAlternates(s, '/authors')} crumbs={[{ name: t('nav.authors') }]} active="authors">
+  <div class="wrap page-head"><h1>{t('authors.title')}</h1><p>{t('authors.intro')}</p></div>
+  <div class="wrap" style="padding-bottom:64px">
+    <div class="people">
+      {list.map(({ a, n }) => (
+        <a class="person" href={href(lang, `/authors/${a.tr[L].slug}`)}>
+          <Img media={a.photo} alt={t('alt.author', { author: a.name })} widths={[128, 256]} sizes="128px" class="ph" />
+          <b>{a.name}</b>{n > 0 && <span>{t('shop.count', { count: n })}</span>}
+          {a.tr[L].seoDescription && <span>{clip(a.tr[L].seoDescription, 80)}</span>}
+        </a>
+      ))}
+    </div>
+  </div>
+</Site>

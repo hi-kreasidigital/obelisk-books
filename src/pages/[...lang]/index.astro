@@ -1,0 +1,246 @@
+---
+import Save from '../../components/site/Save.astro';
+// Homepage — approved Option A with the revised ebook section (roadmap §1.2)
+import Site from '../../layouts/Site.astro';
+import Img from '../../components/site/Img.astro';
+import ProductCard from '../../components/site/ProductCard.astro';
+import PostCard from '../../components/site/PostCard.astro';
+import Price from '../../components/site/Price.astro';
+import Newsletter from '../../components/site/Newsletter.astro';
+import Tpl from '../../components/site/Tpl.astro';
+import {
+  articlesIn, authorsIn, booksIn, card, categoriesIn, collectionBooks, collectionsIn, collectionSets, date, ebookFormat, ebookUrl, getSite, href,
+  langPaths, money, organization, printFormats, setSavings, shelf, staticAlternates, translator, SITE_URL,
+} from '../../lib/site/site';
+
+export const getStaticPaths = langPaths;
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const t = translator(s, lang.code);
+const L = lang.code;
+const books = booksIn(s, L);
+
+// hero: featured format from the dashboard, else a featured book, else the newest release
+const featuredId = s.settings['homepage.featured_book'];
+const byDate = books.flatMap((b) => printFormats(b)).filter((f) => f.availability !== 'out_of_print').sort((a, b) => (b.releaseDate ?? '').localeCompare(a.releaseDate ?? ''));
+const heroFormat = (featuredId && s.format.get(featuredId)) || books.filter((b) => b.featured).flatMap((b) => printFormats(b))[0] || byDate[0];
+const hero = heroFormat ? card(s, lang, heroFormat, t) : null;
+const heroBook = heroFormat ? s.bookOfFormat(heroFormat) : null;
+
+const bestsellers = shelf(s, 'bestsellers', lang, t, 5);
+const newReleases = shelf(s, 'new_releases', lang, t, 5);
+const upcoming = shelf(s, 'upcoming', lang, t, 3);
+const onSale = shelf(s, 'on_sale', lang, t, 3);
+
+// featured ebook for "Ebooks, delivered instantly"
+const ebooks = books.map((b) => ({ b, f: ebookFormat(b) })).filter((x) => x.f);
+const feId = s.settings['homepage.featured_ebook'];
+const fe = ebooks.find((x) => x.f!.id === feId) ?? ebooks.find((x) => x.f!.preview.length) ?? ebooks[0];
+
+const topics = categoriesIn(s, L).map((c) => {
+  const inCat = books.filter((b) => b.categoryIds.includes(c.id));
+  return { c, count: inCat.length, covers: inCat.map((b) => b.cover).filter(Boolean).slice(0, 3) };
+}).filter((x) => x.count > 0).slice(0, 4);
+
+const collections = collectionsIn(s, L).map((c) => {
+  const cb = collectionBooks(s, c.id, L);
+  const set = collectionSets(s, c.id).sort((a, b) => a.price.EUR - b.price.EUR)[0];
+  return { c, cb, set, save: set ? setSavings(s, set, 'EUR').save : 0 };
+}).slice(0, 2);
+
+const authors = authorsIn(s, L).map((a) => ({ a, n: books.filter((b) => b.authors.includes(a.id)).length })).filter((x) => x.n > 0).slice(0, 6);
+const posts = articlesIn(s, L).slice(0, 4);
+const catName = (ids: string[]) => ids.map((id) => s.category.get(id)?.tr[L]?.name).find(Boolean);
+const ig = s.settings['social.instagram'];
+
+const jsonld = [
+  organization(s),
+  { '@context': 'https://schema.org', '@type': 'WebSite', '@id': `${SITE_URL}/#website`, url: SITE_URL + href(lang, '/'), name: t('site.name'), inLanguage: L,
+    publisher: { '@id': `${SITE_URL}/#organization` },
+    potentialAction: { '@type': 'SearchAction', target: `${SITE_URL}${href(lang, '/search')}?q={search_term_string}`, 'query-input': 'required name=search_term_string' } },
+];
+const usps = ['informative', 'worldwide', 'instant', 'secure'];
+const uspIcon = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#006E75" stroke-width="2.2" stroke-linecap="round"><path d="M5 12l4 4 10-10"/></svg>';
+---
+<Site lang={L} title={t('meta.home.title')} description={t('site.meta_description')} alternates={staticAlternates(s, '/')} jsonld={jsonld}>
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-text">
+        <span class="eyebrow">{t('home.hero.eyebrow')}</span>
+        <h1>{t('home.hero.title')}</h1>
+        <p>{t('home.hero.text')}</p>
+        <div class="ctas">
+          <a class="btn btn-teal btn-lg" href={href(lang, '/books')}>{t('home.hero.cta_primary')}</a>
+          <a class="btn btn-outline btn-lg" href={href(lang, '/ebooks')}>{t('home.hero.cta_secondary')}</a>
+        </div>
+      </div>
+      {hero && heroBook && (
+        <div class="feature">
+          <a href={hero.href} tabindex="-1" aria-hidden="true"><Img media={hero.cover} alt="" widths={[170, 240, 340]} sizes="(max-width: 720px) 120px, 170px" priority /></a>
+          <div class="stack">
+            <span class="pill" style="align-self:flex-start">{t('home.featured.badge')}</span>
+            <a class="t" href={hero.href} style="color:inherit;text-decoration:none">{hero.title}</a>
+            <span class="muted">{t('product.by', { author: hero.author })}</span>
+            <span class="small muted">{hero.formatLabel}</span>
+            <Price price={hero.price} regular={hero.regular} onSale={hero.onSale} lowest30={hero.lowest30} lang={L} t={t} big vat />
+            <a href={hero.href} style="font-weight:700">{t('btn.view_book')} →</a>
+          </div>
+        </div>
+      )}
+    </div>
+  </section>
+
+  <section class="usps" aria-label={t('site.name')}>
+    <div class="wrap">
+      {usps.map((u) => <div class="usp"><span class="ic"><Fragment set:html={uspIcon} /></span><div><b>{t(`usp.${u}.title`)}</b><span>{t(`usp.${u}.text`)}</span></div></div>)}
+    </div>
+  </section>
+
+  {bestsellers.length > 0 && (
+    <section class="wrap section" style="padding-bottom:24px" aria-labelledby="h-best">
+      <div class="section-head"><h2 class="h2" id="h-best">{t('home.bestsellers.title')}</h2><a href={href(lang, '/shop')}>{t('btn.view_all')}</a></div>
+      <div class="shelf">{bestsellers.map((c) => <ProductCard c={c} lang={L} t={t} />)}</div>
+    </section>
+  )}
+  {newReleases.length > 0 && (
+    <section class="wrap section" aria-labelledby="h-new">
+      <div class="section-head"><h2 class="h2" id="h-new">{t('home.new.title')}</h2><a href={href(lang, '/shop') + '?sort=newest'}>{t('btn.view_all')}</a></div>
+      <div class="shelf">{newReleases.map((c) => <ProductCard c={c} lang={L} t={t} />)}</div>
+    </section>
+  )}
+
+  <div class="rule-top ebooks-band">
+    <section class="wrap" aria-labelledby="h-ebooks">
+      <div class="text">
+        <h2 class="h2" id="h-ebooks">{t('home.ebooks.title')}</h2>
+        <p>{t('home.ebooks.text')}</p>
+        <ol class="steps">
+          {[1, 2, 3].map((n) => <li><span class="n">0{n}</span><b>{t(`home.ebooks.step${n}.title`)}</b><span>{t(`home.ebooks.step${n}.text`)}</span></li>)}
+        </ol>
+        <a class="btn btn-teal btn-lg" style="align-self:flex-start;margin-top:8px" href={href(lang, '/ebooks')}>{t('home.ebooks.cta')}</a>
+      </div>
+      {fe && (
+        <div class="reader-mock">
+          <div class="bar"><span>{t('preview.title', { title: fe.b.tr[L].title })}</span><span aria-hidden="true" style="font-size:20px">×</span></div>
+          <a class="page" href={ebookUrl(lang, fe.b)} tabindex="-1" aria-hidden="true">
+            {fe.f!.preview[0]
+              ? <Img media={{ id: 'p', bucket: 'previews', path: '', url: fe.f!.preview[0].url, width: fe.f!.preview[0].width, height: fe.f!.preview[0].height, alt: {} }} alt="" widths={[240, 480]} sizes="240px" />
+              : <Img media={fe.b.cover} alt="" widths={[240, 480]} sizes="240px" />}
+          </a>
+          <div class="foot">
+            <span class="muted">{t('preview.page', { current: 1, total: fe.f!.preview.length || 5 })}</span>
+            <a class="btn btn-orange" href={ebookUrl(lang, fe.b)}><Tpl text={t('preview.buy')} name="price"><span data-money data-eur={fe.f!.price.EUR} data-usd={fe.f!.price.USD}>{money(fe.f!.price.EUR, 'EUR', L)}</span></Tpl></a>
+          </div>
+        </div>
+      )}
+    </section>
+  </div>
+
+  {topics.length > 0 && (
+    <section class="wrap section" aria-labelledby="h-topics">
+      <h2 class="h2" id="h-topics" style="margin-bottom:8px">{t('home.categories.title')}</h2>
+      <p class="muted" style="font-size:18px;margin-bottom:24px">{t('home.categories.text')}</p>
+      <div class="topics">
+        {topics.map(({ c, count, covers }) => (
+          <a class="topic" href={href(lang, `/categories/${c.tr[L].slug}`)}>
+            <span class="fan">{covers.map((m) => <Img media={m} alt="" widths={[72, 144]} sizes="72px" />)}</span>
+            <span class="name">{c.tr[L].name}</span>
+            <span class="count">{t('shop.count', { count })} →</span>
+          </a>
+        ))}
+      </div>
+    </section>
+  )}
+
+  {collections.length > 0 && (
+    <section class="alt" aria-labelledby="h-coll">
+      <div class="wrap section">
+        <div class="section-head" style="align-items:flex-end">
+          <div class="stack" style="max-width:640px"><h2 class="h2" id="h-coll">{t('home.series.title')}</h2><p class="muted" style="font-size:18px">{t('home.series.text')}</p></div>
+          <a class="btn btn-teal" href={href(lang, '/collections')}>{t('home.series.cta')}</a>
+        </div>
+        <div class="collection-cards">
+          {collections.map(({ c, cb, set, save }) => (
+            <a class="collection-card" href={href(lang, `/collections/${c.tr[L].slug}`)}>
+              <span class="stacked-covers">{cb.slice(0, 5).map((b) => <Img media={b.cover} alt="" widths={[92, 184]} sizes="92px" />)}</span>
+              <span class="stack" style="flex:1 1 200px;gap:6px">
+                <span class="eyebrow" style="font-size:13px">{t('collection.only_here')}</span>
+                <span class="name">{c.tr[L].name}</span>
+                <span class="muted" style="font-size:15px">{t('collection.includes', { count: cb.length })}</span>
+                {set && <span class="price"><span data-money data-eur={set.price.EUR} data-usd={set.price.USD}>{money(set.price.EUR, 'EUR', L)}</span><Save set={set} lang={L} t={t} style="margin-left:6px" /></span>}
+              </span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  {(upcoming.length > 0 || onSale.length > 0) && (
+    <section class="wrap section two-col">
+      {upcoming.length > 0 && (
+        <div aria-labelledby="h-up">
+          <div class="section-head"><h2 class="h2" id="h-up" style="font-size:32px">{t('home.upcoming.title')}</h2></div>
+          <div class="stack" style="gap:16px">
+            {upcoming.map((c) => (
+              <div class="row-card">
+                <Img media={c.cover} alt={t('alt.cover', { title: c.title, author: c.author })} widths={[76, 152]} sizes="76px" />
+                <div class="info"><a href={c.href}>{c.title}</a><span class="small muted">{c.author}</span><span class="small" style="color:var(--teal-text);font-weight:700">{t('product.preorder', { date: date(c.preorder, L) })}</span></div>
+                <a class="btn" href={c.href}>{t('btn.preorder')}<span class="sr-only">: {c.title}</span></a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {onSale.length > 0 && (
+        <div aria-labelledby="h-sale">
+          <div class="section-head"><h2 class="h2" id="h-sale" style="font-size:32px">{t('home.sale.title')}</h2></div>
+          <div class="stack" style="gap:16px">
+            {onSale.map((c) => (
+              <div class="row-card">
+                <Img media={c.cover} alt={t('alt.cover', { title: c.title, author: c.author })} widths={[76, 152]} sizes="76px" />
+                <div class="info"><a href={c.href}>{c.title}</a><span class="small muted">{c.formatLabel}</span><Price price={c.price} regular={c.regular} onSale lowest30={c.lowest30} lang={L} t={t} approx={false} /></div>
+                <button type="button" class="btn" data-add={c.formatId} data-title={c.title} data-label={c.formatLabel} data-eur={c.price.EUR} data-usd={c.price.USD} data-href={c.href}>{t('btn.add_to_cart')}<span class="sr-only">: {c.title}</span></button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  )}
+
+  {authors.length > 0 && (
+    <section class="rule-top" aria-labelledby="h-auth">
+      <div class="wrap section">
+        <div class="section-head"><h2 class="h2" id="h-auth">{t('home.authors.title')}</h2><a href={href(lang, '/authors')}>{t('home.authors.cta')}</a></div>
+        <div class="people scroll">
+          {authors.map(({ a, n }) => (
+            <a class="person" href={href(lang, `/authors/${a.tr[L].slug}`)}>
+              <Img media={a.photo} alt={t('alt.author', { author: a.name })} widths={[128, 256]} sizes="128px" class="ph" />
+              <b>{a.name}</b><span>{t('shop.count', { count: n })}</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  {posts.length > 0 && (
+    <section class="alt" aria-labelledby="h-blog">
+      <div class="wrap section">
+        <div class="section-head"><h2 class="h2" id="h-blog">{t('home.articles.title')}</h2><a href={href(lang, '/articles')}>{t('home.articles.cta')}</a></div>
+        <div class="posts">{posts.map((a) => <PostCard a={a} lang={lang} t={t} topic={catName(a.categoryIds)} />)}</div>
+      </div>
+    </section>
+  )}
+
+  <Fragment slot="after">
+    <Newsletter lang={lang} t={t} />
+    {s.instagram.length > 0 && (
+      <section class="wrap section" aria-labelledby="h-ig">
+        <div class="section-head"><h2 class="h2" id="h-ig" style="font-size:28px">{t('home.instagram.title')}</h2>{ig?.url && <a href={ig.url} rel="noopener me">{ig.handle}</a>}</div>
+        <div class="insta">{s.instagram.slice(0, 5).map((i) => <a href={i.url ?? ig?.url} rel="noopener"><Img media={i.media} alt={i.media.alt[L] ?? ''} widths={[240, 360]} sizes="(max-width:720px) 60vw, 240px" /><span class="sr-only">Instagram</span></a>)}</div>
+      </section>
+    )}
+  </Fragment>
+</Site>

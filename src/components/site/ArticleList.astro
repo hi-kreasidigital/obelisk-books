@@ -1,0 +1,38 @@
+---
+import Site from '../../layouts/Site.astro';
+import PostCard from './PostCard.astro';
+import { articlesIn, categoriesIn, getSite, href, topicOf, translator, alternates } from '../../lib/site/site';
+export const PER_PAGE = 12;
+interface Props { lang: string; page: number }
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const L = lang.code;
+const t = translator(s, L);
+const { page } = Astro.props;
+const all = articlesIn(s, L);
+const pages = Math.max(1, Math.ceil(all.length / PER_PAGE));
+const list = all.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+const pageUrl = (l: typeof lang, n: number) => href(l, n === 1 ? '/articles' : `/articles/page/${n}`);
+const topics = categoriesIn(s, L).filter((c) => all.some((a) => a.categoryIds.includes(c.id)));
+const title = page > 1 ? `${t('meta.articles.title')} · ${t('pagination.page', { number: page })}` : t('meta.articles.title');
+const alts = alternates(s, (l) => (Math.ceil(articlesIn(s, l.code).length / PER_PAGE) >= page ? pageUrl(l, page) : null));
+---
+<Site lang={L} title={title} description={t('meta.articles.desc')} alternates={alts} crumbs={[{ name: t('nav.articles'), href: page > 1 ? pageUrl(lang, 1) : undefined }, ...(page > 1 ? [{ name: t('pagination.page', { number: page }) }] : [])]} active="articles"
+  jsonld={[{ '@context': 'https://schema.org', '@type': 'Blog', name: `${t('site.name')} — ${t('nav.articles')}`, inLanguage: L }]}>
+  <div class="wrap page-head">
+    <h1>{t('articles.title')}</h1><p>{t('articles.intro')}</p>
+    {topics.length > 0 && <nav class="chips" aria-label={t('articles.topic')}>{topics.map((c) => <a class="chip" href={href(lang, `/categories/${c.tr[L].slug}`)}>{c.tr[L].name}</a>)}</nav>}
+  </div>
+  <div class="wrap" style="padding-bottom:64px">
+    {list.length ? <div class="posts">{list.map((a, i) => <PostCard a={a} lang={lang} t={t} topic={topicOf(s, a.categoryIds, L)} latest={page === 1 && i === 0} showDate />)}</div> : <p class="muted">—</p>}
+    {pages > 1 && (
+      <nav aria-label={t('pagination.label')}>
+        <ul class="pager">
+          {page > 1 && <li><a href={pageUrl(lang, page - 1)} rel="prev">‹<span class="sr-only"> {t('pagination.prev')}</span></a></li>}
+          {Array.from({ length: pages }, (_, i) => i + 1).map((n) => <li>{n === page ? <span aria-current="page">{n}</span> : <a href={pageUrl(lang, n)}>{n}</a>}</li>)}
+          {page < pages && <li><a href={pageUrl(lang, page + 1)} rel="next">›<span class="sr-only"> {t('pagination.next')}</span></a></li>}
+        </ul>
+      </nav>
+    )}
+  </div>
+</Site>

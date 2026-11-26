@@ -1,0 +1,6 @@
+---
+import ShopPage from '../../../components/site/ShopPage.astro';
+import { langPaths } from '../../../lib/site/site';
+export const getStaticPaths = langPaths;
+---
+<ShopPage lang={Astro.props.lang} kind="ebook" />

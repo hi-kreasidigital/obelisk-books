@@ -1,0 +1,6 @@
+---
+import BookPage from '../../../components/site/BookPage.astro';
+import { bookPaths } from '../../../lib/site/site';
+export const getStaticPaths = () => bookPaths('print');
+---
+<BookPage lang={Astro.props.lang} id={Astro.props.id} kind="print" />

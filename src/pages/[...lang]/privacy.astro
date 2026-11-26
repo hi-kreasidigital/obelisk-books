@@ -1,0 +1,20 @@
+---
+// Legal page template. The texts are added in Phase 7 after the legal check (setting 'legal.privacy': { "<lang>": { "html": "...", "updated": "YYYY-MM-DD" } }).
+// Until then the page shows a short note and stays out of search engines and sitemaps.
+import HelpPage from '../../components/site/HelpPage.astro';
+import { date, getSite, langPaths, translator } from '../../lib/site/site';
+export const getStaticPaths = langPaths;
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const t = translator(s, lang.code);
+const doc = s.settings['legal.privacy']?.[lang.code] as { html?: string; updated?: string } | undefined;
+const title = t('legal.privacy.title');
+const toc = doc?.html ? [...doc.html.matchAll(/<h2[^>]*>(.*?)<\/h2>/g)].map((m, i) => ({ id: `s${i + 1}`, text: m[1].replace(/<[^>]+>/g, '') })) : [];
+let i = 0;
+const html = doc?.html?.replace(/<h2(?![^>]*id=)/g, () => `<h2 id="s${++i}"`) ?? '';
+---
+<HelpPage lang={lang.code} path="/privacy" title={title} metaTitle={`${title} | ${t('site.name')}`} noindex={!doc?.html}>
+  {doc?.updated && <p class="muted">{t('legal.last_updated', { date: date(doc.updated, lang.code) })}</p>}
+  {toc.length > 2 && <nav class="box" aria-label={t('legal.toc')}><b>{t('legal.toc')}</b><ol>{toc.map((x) => <li><a href={`#${x.id}`}>{x.text}</a></li>)}</ol></nav>}
+  {doc?.html ? <div set:html={html} /> : <p class="notice">{t('legal.pending')}</p>}
+</HelpPage>

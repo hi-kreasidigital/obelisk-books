@@ -1,0 +1,6 @@
+---
+import ArticleList from '../../../components/site/ArticleList.astro';
+import { langPaths } from '../../../lib/site/site';
+export const getStaticPaths = langPaths;
+---
+<ArticleList lang={Astro.props.lang} page={1} />

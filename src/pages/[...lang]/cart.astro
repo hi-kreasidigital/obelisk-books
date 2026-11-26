@@ -1,0 +1,63 @@
+---
+// Cart (noindex). Phase 4 adds discount codes, server-side price checks, ebook consent handling and Stripe Checkout.
+import ShellPage from '../../components/site/ShellPage.astro';
+import { getSite, href, langPaths, translator } from '../../lib/site/site';
+export const getStaticPaths = langPaths;
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const t = translator(s, lang.code);
+---
+<ShellPage lang={lang.code} path="/cart" title={t('cart.title')} wide>
+  <div data-cart-page data-t-remove={t('btn.remove')} data-t-qty={t('cart.col.qty')}>
+    <div data-empty hidden class="stack" style="align-items:flex-start;gap:16px;padding:24px 0">
+      <p style="font-size:18px">{t('cart.empty')}</p><a class="btn btn-teal btn-lg" href={href(lang, '/shop')}>{t('cart.empty_cta')}</a>
+    </div>
+    <div data-full hidden>
+      <table class="cart-table">
+        <thead><tr><th>{t('cart.col.item')}</th><th>{t('cart.col.price')}</th><th>{t('cart.col.qty')}</th><th>{t('cart.col.total')}</th><th><span class="sr-only">{t('btn.remove')}</span></th></tr></thead>
+        <tbody data-lines></tbody>
+      </table>
+      <div style="display:flex;justify-content:flex-end;margin-top:24px">
+        <div class="box" style="min-width:min(380px,100%)">
+          <p style="display:flex;justify-content:space-between"><span>{t('cart.subtotal')}</span><b data-subtotal></b></p>
+          <p style="display:flex;justify-content:space-between" class="muted"><span>{t('cart.shipping')}</span><span>{t('cart.shipping_checkout')}</span></p>
+          <p class="small muted">{t('cart.vat_note')}</p>
+          <label data-ebook-consent hidden style="display:flex;gap:10px;align-items:flex-start" class="small"><input type="checkbox" style="width:20px;height:20px;flex-shrink:0" /> {t('cart.ebook_consent')}</label>
+          <button type="button" class="btn btn-teal btn-lg" disabled>{t('cart.checkout')}</button>
+          <p class="small muted">{t('cart.secure')}</p>
+          <p class="notice small">{t('state.coming_soon')}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</ShellPage>
+<script>
+  import { cartLines, cartSet, onCart } from '../../client/cart';
+  const root = document.querySelector<HTMLElement>('[data-cart-page]')!;
+  const locale = JSON.parse(document.getElementById('site-config')!.textContent!).locale;
+  const render = () => {
+    const lines = cartLines();
+    const cur = document.documentElement.dataset.currency === 'USD' ? 'USD' : 'EUR';
+    const fmt = (c: number) => new Intl.NumberFormat(locale, { style: 'currency', currency: cur }).format(c / 100);
+    root.querySelector<HTMLElement>('[data-empty]')!.hidden = lines.length > 0;
+    root.querySelector<HTMLElement>('[data-full]')!.hidden = lines.length === 0;
+    const body = root.querySelector('[data-lines]')!;
+    body.replaceChildren(...lines.map((l) => {
+      const tr = document.createElement('tr');
+      const price = cur === 'USD' ? l.usd : l.eur;
+      tr.innerHTML = `<td><a></a><div class="small muted"></div></td><td></td><td><input type="number" min="0" max="20" style="width:64px;min-height:44px;font:inherit;text-align:center" /></td><td><b></b></td><td><button type="button" class="btn">×</button></td>`;
+      const a = tr.querySelector('a')!; a.href = l.href; a.textContent = l.title;
+      tr.querySelector('div')!.textContent = l.label;
+      tr.children[1].textContent = fmt(price);
+      const q = tr.querySelector('input')!; q.value = String(l.qty); q.setAttribute('aria-label', `${root.dataset.tQty}: ${l.title}`);
+      q.addEventListener('change', () => cartSet(l.id, Math.max(0, Math.min(20, Number(q.value) || 0))));
+      tr.querySelector('b')!.textContent = fmt(price * l.qty);
+      const rm = tr.querySelector('button')!; rm.setAttribute('aria-label', `${root.dataset.tRemove}: ${l.title}`); rm.addEventListener('click', () => cartSet(l.id, 0));
+      return tr;
+    }));
+    root.querySelector('[data-subtotal]')!.textContent = fmt(lines.reduce((t, l) => t + (cur === 'USD' ? l.usd : l.eur) * l.qty, 0));
+    root.querySelector<HTMLElement>('[data-ebook-consent]')!.hidden = !lines.some((l) => /ebook|epub/i.test(l.label));
+  };
+  onCart(render);
+  new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ['data-currency'] });
+</script>

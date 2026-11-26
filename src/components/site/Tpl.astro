@@ -1,0 +1,8 @@
+---
+// Renders a website text with one {placeholder} replaced by the slot (e.g. a live price), keeping word order per language.
+interface Props { text: string; name: string; vars?: Record<string, string | number> }
+const { text, name, vars = {} } = Astro.props;
+const fill = (s: string) => s.replace(/\{([a-z_]+)\}/g, (m, k) => (vars[k] != null ? String(vars[k]) : m));
+const [pre, post = ''] = text.split(`{${name}}`);
+---
+{fill(pre)}<slot />{fill(post)}

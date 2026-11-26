@@ -1,0 +1,9 @@
+---
+import ShellPage from '../../../components/site/ShellPage.astro';
+import { getSite, href, langPaths, translator } from '../../../lib/site/site';
+export const getStaticPaths = langPaths;
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const t = translator(s, lang.code);
+---
+<ShellPage lang={lang.code} path="/checkout/success" title={t('checkout.success.title')} text={t('checkout.processing.text')} soon><a class="btn btn-teal btn-lg" href={href(lang, '/shop')}>{t('checkout.success.continue')}</a></ShellPage>

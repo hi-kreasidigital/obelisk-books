@@ -1,0 +1,67 @@
+---
+// Product grid with filters + sort (shop, books, ebooks, categories). All items are in the HTML (crawlable);
+// filtering, sorting and "Load more" run in the browser (src/client/listing.ts).
+import ProductCard from './ProductCard.astro';
+import { authorsIn, categoriesIn, collectionsIn, getSite, type Card, type T } from '../../lib/site/site';
+import type { Lang } from '../../lib/site/types';
+interface Props { cards: Card[]; lang: Lang; t: T; filters?: ('format' | 'category' | 'collection' | 'author' | 'availability')[]; pageSize?: number }
+const { cards, lang, t, filters = ['format', 'category', 'collection', 'author', 'availability'], pageSize = 24 } = Astro.props;
+const s = await getSite();
+const L = lang.code;
+const count = (fn: (c: Card) => boolean) => cards.filter(fn).length;
+const groups: { key: string; legend: string; opts: { v: string; label: string; n: number }[] }[] = [];
+if (filters.includes('format')) groups.push({ key: 'format', legend: t('filter.format'), opts: [
+  { v: 'print', label: t('format.print'), n: count((c) => c.type === 'paperback' || c.type === 'hardcover') },
+  { v: 'ebook', label: t('format.ebook'), n: count((c) => c.type === 'ebook') },
+  { v: 'set', label: t('filter.sets'), n: count((c) => c.type === 'bundle') },
+] });
+if (filters.includes('category')) groups.push({ key: 'cats', legend: t('filter.category'), opts: categoriesIn(s, L).map((c) => ({ v: c.id, label: c.tr[L].name, n: count((x) => x.categoryIds.includes(c.id)) })) });
+if (filters.includes('collection')) groups.push({ key: 'collection', legend: t('filter.collection'), opts: collectionsIn(s, L).map((c) => ({ v: c.id, label: c.tr[L].name, n: count((x) => x.collectionId === c.id) })) });
+if (filters.includes('author')) groups.push({ key: 'authors', legend: t('filter.author'), opts: authorsIn(s, L).map((a) => ({ v: a.id, label: a.name, n: count((x) => x.authorIds.includes(a.id)) })) });
+if (filters.includes('availability')) groups.push({ key: 'avail', legend: t('filter.availability'), opts: [
+  { v: 'available', label: t('filter.available'), n: count((c) => !c.preorder && !c.outOfPrint) },
+  { v: 'preorder', label: t('filter.preorder'), n: count((c) => !!c.preorder) },
+  { v: 'sale', label: t('filter.on_sale'), n: count((c) => c.onSale) },
+] });
+const visibleGroups = groups.map((g) => ({ ...g, opts: g.opts.filter((o) => o.n > 0) })).filter((g) => g.opts.length > 1 || (g.key === 'avail' && g.opts.length > 0));
+---
+<div class="wrap shop-layout" data-listing data-page-size={pageSize}
+  data-t-showing={t('shop.showing')} data-t-count={t('shop.count')}>
+  {visibleGroups.length > 0 ? (
+    <div>
+      <button type="button" class="btn filters-toggle" aria-expanded="false" aria-controls="filters">{t('filter.title')}</button>
+      <form class="filters" id="filters" data-open="false" aria-label={t('filter.title')}>
+        <div class="section-head" style="margin-bottom:6px"><h2 style="font-size:18px">{t('filter.title')}</h2><button type="reset" class="btn" style="min-height:36px;padding:0 10px;border:0;text-decoration:underline;color:var(--teal-text)">{t('filter.clear')}</button></div>
+        {visibleGroups.map((g) => (
+          <fieldset>
+            <legend>{g.legend}</legend>
+            {g.opts.map((o) => <label><input type="checkbox" name={g.key} value={o.v} /> {o.label} <span class="muted">({o.n})</span></label>)}
+          </fieldset>
+        ))}
+      </form>
+    </div>
+  ) : <div />}
+  <div>
+    <div class="toolbar">
+      <p aria-live="polite"><b data-count>{t('shop.count', { count: cards.length })}</b></p>
+      <label class="field" style="flex-direction:row;align-items:center;gap:10px"><span>{t('sort.label')}</span>
+        <select data-sort>
+          <option value="recommended">{t('sort.recommended')}</option>
+          <option value="newest">{t('sort.newest')}</option>
+          <option value="price_asc">{t('sort.price_asc')}</option>
+          <option value="price_desc">{t('sort.price_desc')}</option>
+          <option value="title">{t('sort.title')}</option>
+        </select>
+      </label>
+    </div>
+    {cards.length ? (
+      <div class="grid" data-grid>{cards.map((c, i) => <ProductCard c={c} lang={L} t={t} priority={i < 2} hidden={i >= pageSize} />)}</div>
+    ) : <p class="muted">{t('shop.empty')}</p>}
+    <p class="muted" data-empty hidden>{t('shop.empty')} <button type="button" class="btn" data-clear>{t('shop.empty_cta')}</button></p>
+    <div class="load-more" data-more-wrap hidden={cards.length <= pageSize}>
+      <span class="muted" data-showing>{t('shop.showing', { shown: Math.min(pageSize, cards.length), total: cards.length })}</span>
+      <button type="button" class="btn" data-more>{t('btn.load_more')}</button>
+    </div>
+  </div>
+</div>
+<script>import '../../client/listing.ts';</script>

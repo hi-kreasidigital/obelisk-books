@@ -1,0 +1,34 @@
+---
+// Newsletter sign-up (double opt-in through Resend is wired in Phase 5).
+import { href, type T } from '../../lib/site/site';
+import type { Lang } from '../../lib/site/types';
+interface Props { lang: Lang; t: T; compact?: boolean; id?: string }
+const { lang, t, compact = false, id = 'nl' } = Astro.props;
+const [pre, post = ''] = t('newsletter.consent').split(t('footer.privacy').toLowerCase());
+---
+{compact ? (
+  <aside class="nl-compact" aria-labelledby={`${id}-h`}>
+    <p id={`${id}-h`} style="font-weight:700;margin-bottom:10px">{t('articles.newsletter_cta')}</p>
+    <form class="nl-form" data-newsletter>
+      <label for={`${id}-email`}>{t('newsletter.placeholder')}</label>
+      <div class="fields"><input id={`${id}-email`} type="email" name="email" required autocomplete="email" /><button class="btn btn-orange btn-lg" type="submit">{t('newsletter.button')}</button></div>
+      <small>{t('newsletter.consent')}</small>
+      <p class="small" data-nl-msg role="status"></p>
+    </form>
+  </aside>
+) : (
+  <section class="newsletter" id="newsletter" aria-labelledby={`${id}-h`}>
+    <div class="wrap">
+      <div class="stack" style="max-width:520px">
+        <h2 class="h2" id={`${id}-h`}>{t('newsletter.title')}</h2>
+        <p style="font-size:18px">{t('newsletter.text')}</p>
+      </div>
+      <form class="nl-form" data-newsletter>
+        <label for={`${id}-email`}>{t('newsletter.placeholder')}</label>
+        <div class="fields"><input id={`${id}-email`} type="email" name="email" required autocomplete="email" /><button class="btn btn-orange btn-lg" type="submit">{t('newsletter.button')}</button></div>
+        <small>{post !== '' ? <>{pre}<a href={href(lang, '/privacy')}>{t('footer.privacy').toLowerCase()}</a>{post}</> : <>{t('newsletter.consent')} <a href={href(lang, '/privacy')}>{t('footer.privacy')}</a></>}</small>
+        <p class="small" data-nl-msg role="status"></p>
+      </form>
+    </div>
+  </section>
+)}

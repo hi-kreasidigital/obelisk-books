@@ -1,0 +1,56 @@
+---
+import Site from '../../../layouts/Site.astro';
+import Img from '../../../components/site/Img.astro';
+import ProductCard from '../../../components/site/ProductCard.astro';
+import PostCard from '../../../components/site/PostCard.astro';
+import { absolute, alternates, articlesIn, authorsIn, booksIn, clip, entityPaths, getSite, href, listingCards, paragraphs, topicOf, translator } from '../../../lib/site/site';
+export const getStaticPaths = () => entityPaths(authorsIn);
+const s = await getSite();
+const lang = s.lang(Astro.props.lang);
+const L = lang.code;
+const t = translator(s, L);
+const a = s.author.get(Astro.props.id)!;
+const tr = a.tr[L];
+const books = booksIn(s, L).filter((b) => b.authors.includes(a.id));
+const cards = listingCards(s, lang, t, 'all', books);
+const cols = [...new Set(books.map((b) => b.collectionId).filter(Boolean))].map((id) => s.collection.get(id!)?.tr[L]).filter(Boolean);
+const posts = articlesIn(s, L).filter((p) => p.authorId === a.id || p.bookIds.some((id) => books.some((b) => b.id === id)));
+const url = href(lang, `/authors/${tr.slug}`);
+const bio = paragraphs(tr.bio);
+const jsonld = [{
+  '@context': 'https://schema.org', '@type': 'ProfilePage', inLanguage: L,
+  mainEntity: { '@type': 'Person', '@id': `${absolute(url)}#person`, name: a.name, url: absolute(url), ...(a.photo ? { image: a.photo.url } : {}), ...(bio[0] ? { description: clip(bio.join(' '), 300) } : {}),
+    ...(a.website ? { sameAs: [a.website] } : {}), workExample: books.slice(0, 20).map((b) => ({ '@type': 'Book', name: b.tr[L].title })) },
+}];
+---
+<Site lang={L} title={tr.seoTitle || t('meta.author.title', { author: a.name })} description={tr.seoDescription || clip(bio.join(' ') || a.name, 155)} image={a.photo} ogType="profile" jsonld={jsonld}
+  alternates={alternates(s, (l) => a.tr[l.code] ? href(l, `/authors/${a.tr[l.code].slug}`) : null)} crumbs={[{ name: t('nav.authors'), href: href(lang, '/authors') }, { name: a.name }]} active="authors">
+  <div class="wrap" style="display:flex;gap:32px;align-items:center;flex-wrap:wrap;padding-top:32px;padding-bottom:32px">
+    <div class="person" style="flex:0 0 auto"><Img media={a.photo} alt={t('alt.author', { author: a.name })} widths={[160, 320]} sizes="160px" class="ph" priority /></div>
+    <div class="stack">
+      <h1>{a.name}</h1>
+      <p class="muted">{t('shop.count', { count: books.length })}{cols.length > 0 && <> · {t('product.detail.collection')}: {cols.map((c, i) => <>{i > 0 && ', '}<a href={href(lang, `/collections/${c!.slug}`)}>{c!.name}</a></>)}</>}</p>
+    </div>
+  </div>
+  {bio.length > 0 && (
+    <section class="wrap" style="padding-bottom:40px" aria-labelledby="h-about">
+      <h2 class="h2" id="h-about" style="font-size:28px;margin-bottom:12px">{t('author.about', { author: a.name })}</h2>
+      <div class="prose">{bio.map((p) => <p>{p}</p>)}</div>
+      {a.website && <p style="margin-top:12px"><a href={a.website} rel="noopener">{t('author.website')} ↗</a></p>}
+    </section>
+  )}
+  {cards.length > 0 && (
+    <section class="wrap" style="padding-bottom:48px" aria-labelledby="h-books">
+      <h2 class="h2" id="h-books" style="font-size:28px;margin-bottom:20px">{t('author.books', { author: a.name })}</h2>
+      <div class="grid">{cards.map((c, i) => <ProductCard c={c} lang={L} t={t} priority={i < 2} />)}</div>
+    </section>
+  )}
+  {posts.length > 0 && (
+    <section class="alt" aria-labelledby="h-posts">
+      <div class="wrap section">
+        <h2 class="h2" id="h-posts" style="font-size:28px;margin-bottom:20px">{t('author.articles', { author: a.name })}</h2>
+        <div class="posts">{posts.slice(0, 6).map((p) => <PostCard a={p} lang={lang} t={t} topic={topicOf(s, p.categoryIds, L)} />)}</div>
+      </div>
+    </section>
+  )}
+</Site>

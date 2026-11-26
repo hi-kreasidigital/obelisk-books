@@ -1,3 +1,0 @@
-# Temporary / preview addresses are hidden from search engines (roadmap §5.7). Opened at Launch (Phase 9).
-User-agent: *
-Disallow: /

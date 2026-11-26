@@ -1,6 +1,19 @@
 ---
-import '../styles/admin.css';
+import Site from '../layouts/Site.astro';
+import { getSite, href, translator } from '../lib/site/site';
+const s = await getSite();
+const lang = s.lang('en');
+const t = translator(s, 'en');
 ---
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="robots" content="noindex" /><title>Page not found · Obelisk Books</title></head>
-<body class="min-h-screen grid place-items-center p-6"><main class="text-center"><h1 class="text-2xl font-bold mb-2">Page not found</h1><a class="link" href="/">Go to the homepage</a></main></body></html>
+<Site lang="en" title={`${t('404.title')} | ${t('site.name')}`} alternates={{}} noindex>
+  <div class="center-page">
+    <h1>{t('404.title')}</h1>
+    <p class="muted" style="font-size:18px">{t('404.text')}</p>
+    <a class="btn btn-teal btn-lg" href={href(lang, '/')}>{t('404.button')}</a>
+    <form class="search-form" role="search" action={href(lang, '/search')} method="get" style="width:100%;max-width:420px;flex:none">
+      <label for="q404" class="sr-only">{t('404.search')}</label>
+      <input id="q404" name="q" type="search" placeholder={t('404.search')} />
+      <button class="icon-btn" type="submit">{t('nav.search_button')}</button>
+    </form>
+  </div>
+</Site>

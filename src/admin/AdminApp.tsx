@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AdminProvider, useAdmin } from './context';
 import { SignIn } from './SignIn';
-import { ToastProvider, useToast, Loading } from './ui/kit';
+import { ToastProvider, Loading } from './ui/kit';
 import { useRoute } from './router';
 import { supabase } from '../lib/supabase';
 import { Overview } from './screens/Overview';
@@ -17,6 +17,7 @@ import { Languages } from './screens/Languages';
 import { Users } from './screens/Users';
 import { Settings } from './screens/Settings';
 import { Later } from './screens/Later';
+import { PublishButton } from './ui/PublishButton';
 
 const NAV: { group: string; items: { path: string; label: string; need?: 'edit' | 'fulfil' | 'owner' }[] }[] = [
   { group: '', items: [{ path: '/', label: 'Overview' }] },
@@ -58,16 +59,7 @@ function Screen({ route }: { route: string }) {
 function Shell() {
   const route = useRoute();
   const { staff, can } = useAdmin();
-  const toast = useToast();
   const [menu, setMenu] = useState(false);
-  const [publishing, setPublishing] = useState(false);
-
-  const publish = async () => {
-    setPublishing(true);
-    const { error } = await supabase.from('publish_runs').insert({ triggered_by: staff!.user_id });
-    setPublishing(false);
-    toast(error ? `Publish failed: ${error.message}` : 'Publish requested. The site rebuild starts once the build pipeline is connected (Phase 3).', error ? 'error' : 'ok');
-  };
 
   const active = (p: string) => (p === '/' ? route === '/' : route === p || route.startsWith(p + '/'));
   return (
@@ -95,7 +87,7 @@ function Shell() {
         <header className="flex items-center gap-3 border-b border-line bg-white px-4 h-14 sticky top-0 z-30">
           <button className="btn lg:hidden" onClick={() => setMenu(!menu)} aria-expanded={menu}>Menu</button>
           <div className="flex-1" />
-          {can.edit && <button className="btn-primary" onClick={publish} disabled={publishing}>Publish site</button>}
+          {can.edit && <PublishButton />}
           <span className="text-sm text-muted hidden sm:inline">{staff!.display_name} · {staff!.role}</span>
           <button className="btn" onClick={() => supabase.auth.signOut()}>Sign out</button>
         </header>

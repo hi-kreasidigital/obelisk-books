@@ -1,0 +1,35 @@
+---
+import Img from './Img.astro';
+import Price from './Price.astro';
+import Save from './Save.astro';
+import { getSite } from '../../lib/site/site';
+import { date, money, type Card, type T } from '../../lib/site/site';
+interface Props { c: Card; lang: string; t: T; priority?: boolean; sizes?: string; hidden?: boolean }
+const { c, lang, t, priority = false, sizes = '(max-width: 720px) 44vw, 220px', hidden = false } = Astro.props;
+const set = c.type === 'bundle' ? (await getSite()).format.get(c.formatId) : null;
+const alt = t('alt.cover', { title: c.title, author: c.author });
+const cta = c.outOfPrint ? null : c.preorder ? t('btn.preorder') : t('btn.add_to_cart');
+---
+<article class="card" hidden={hidden} data-card data-format={c.type === 'bundle' ? 'set' : c.type === 'ebook' ? 'ebook' : 'print'}
+  data-cats={c.categoryIds.join(' ')} data-collection={c.collectionId ?? ''} data-authors={c.authorIds.join(' ')}
+  data-avail={c.preorder ? 'preorder' : c.outOfPrint ? 'oop' : 'available'} data-sale={c.onSale ? '1' : '0'}
+  data-price={c.price.EUR} data-date={c.releaseDate ?? ''} data-title={c.sortTitle}>
+  <a class="cover" href={c.href} tabindex="-1" aria-hidden="true">
+    <Img media={c.cover} alt="" widths={[180, 260, 360, 440]} sizes={sizes} class="cover-img" priority={priority} />
+    <span class="badge">{c.type === 'bundle' ? t('format.collection') : c.formatLabel}</span>
+    {c.onSale && <span class="badge badge-orange">{t('product.sale')}</span>}
+    {c.type === 'bundle' && <Save set={set!} lang={lang} t={t} class="badge badge-orange" />}
+    {c.preorder && <span class="badge badge-orange">{t('btn.preorder')}</span>}
+  </a>
+  <a class="title" href={c.href}>{c.title}<span class="sr-only"> — {c.formatLabel}</span></a>
+  {c.author && <span class="by">{c.author}</span>}
+  <Price price={c.price} regular={c.regular} onSale={c.onSale} lowest30={c.lowest30} lang={lang} t={t} approx={false} />
+  {c.preorder && <span class="note">{t('product.preorder', { date: date(c.preorder, lang) })}</span>}
+  {c.outOfPrint && <span class="note">{t('product.out_of_print')}</span>}
+  {cta && (
+    <div class="actions">
+      <button type="button" class="btn btn-block" data-add={c.formatId} data-title={c.title} data-label={c.formatLabel}
+        data-eur={c.price.EUR} data-usd={c.price.USD} data-href={c.href}>{cta}<span class="sr-only">: {c.title}, {c.formatLabel}</span></button>
+    </div>
+  )}
+</article>
