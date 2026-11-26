@@ -376,21 +376,27 @@ function EbookFiles({ format, coverUrl, onChange }: { format: Format; coverUrl: 
       </div>
 
       <h4 className="font-semibold mt-4 mb-2">5-page preview</h4>
-      <div className="grid gap-3 sm:grid-cols-4 items-end">
-        <Field label="Source">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 items-start">
+        <Field label="Source" hint="PDF keeps the real book pages.">
           <select className="input" value={format.preview_source ?? 'pdf'} disabled={!can.edit} onChange={(e) => savePreviewSettings({ preview_source: e.target.value })}>
             <option value="pdf">PDF (recommended)</option><option value="epub">EPUB</option>
           </select>
         </Field>
-        <Field label="Start at page" hint="Skip copyright / contents pages">
+        <Field label="Start at page" hint={useCover ? 'First page after the cover — skip the PDF’s own cover, copyright and contents pages.' : 'Skip copyright and contents pages.'}>
           <input className="input" type="number" min={1} value={format.preview_page_from} disabled={!can.edit} onChange={(e) => savePreviewSettings({ preview_page_from: Math.max(1, Number(e.target.value) || 1) })} />
         </Field>
-        <Field label="Pages in total">
+        <Field label="Pages in total" hint={useCover ? 'Including the cover.' : undefined}>
           <input className="input" type="number" min={1} max={10} value={format.preview_page_count} disabled={!can.edit} onChange={(e) => savePreviewSettings({ preview_page_count: Math.min(10, Math.max(1, Number(e.target.value) || 5)) })} />
         </Field>
-        <label className="flex gap-2 text-sm pb-2"><input type="checkbox" checked={useCover} onChange={(e) => setUseCover(e.target.checked)} /> Use the cover as page 1</label>
+        <div>
+          <span className="label">Cover</span>
+          <label className="flex items-center gap-2 text-sm min-h-[34px]">
+            <input type="checkbox" checked={useCover} onChange={(e) => setUseCover(e.target.checked)} /> Use the book cover as page 1
+          </label>
+          <span className="block text-xs text-muted mt-1">The cover uploaded under Cover.</span>
+        </div>
       </div>
-      {can.edit && <button className="btn mt-2" onClick={generate} disabled={!!busy}>{pages.length ? 'Regenerate preview' : 'Generate preview'}</button>}
+      {can.edit && <button className="btn-primary mt-3" onClick={generate} disabled={!!busy}>{busy ? 'Working…' : pages.length ? 'Regenerate preview' : 'Generate preview'}</button>}
       {busy && <p className="text-sm text-muted mt-2" role="status">{busy}</p>}
       {pages.length > 0 && (
         <div className="flex gap-2 mt-3 overflow-x-auto">
