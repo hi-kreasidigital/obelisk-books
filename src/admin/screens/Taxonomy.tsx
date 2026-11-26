@@ -103,8 +103,8 @@ export function CategoryEditor({ id }: { id: string }) {
 const AUTHOR_FIELDS = [
   { name: 'slug', label: 'URL slug', type: 'slug' as const, required: true, hint: 'Used in /authors/{slug}. Usually the same in every language.' },
   { name: 'bio', label: 'Biography', type: 'textarea' as const },
-  { name: 'seo_title', label: 'Search-result title', max: 60 },
-  { name: 'seo_description', label: 'Search-result description', type: 'textarea' as const, max: 155 },
+  { name: 'seo_title', label: 'Search-result title', max: 60, hint: 'Leave empty to use the standard template: “{author} — books and biography | Obelisk Books”.' },
+  { name: 'seo_description', label: 'Search-result description', type: 'textarea' as const, max: 500, hint: 'Search engines usually show about the first 155 characters.' },
 ];
 
 export function AuthorsList() {
