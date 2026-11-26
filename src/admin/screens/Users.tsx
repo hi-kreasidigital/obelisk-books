@@ -5,7 +5,7 @@ import { PageHeader, Section, Field, Loading, useToast } from '../ui/kit';
 
 const ROLE_HELP: Record<string, string> = {
   owner: 'Everything, including users, languages and store settings',
-  editor: 'Catalog, articles, media, translations, shipping, discounts; orders read-only',
+  editor: 'Catalog, articles, media, translations, shipping, discounts, and orders & customers',
   fulfilment: 'Orders, Bookvault workflow and customers; catalog read-only',
 };
 

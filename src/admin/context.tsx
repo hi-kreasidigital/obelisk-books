@@ -45,7 +45,7 @@ export function AdminProvider({ children, fallback }: { children: ReactNode; fal
   const can = {
     owner: staff.role === 'owner',
     edit: staff.role === 'owner' || staff.role === 'editor',
-    fulfil: staff.role === 'owner' || staff.role === 'fulfilment',
+    fulfil: staff.role !== undefined && ['owner', 'editor', 'fulfilment'].includes(staff.role),   // Editors also manage orders (26 Nov 2026)
   };
   return (
     <AdminCtx.Provider value={{ session, staff, languages, enabledLangs: languages.filter((l) => l.enabled), reloadLanguages, can }}>
