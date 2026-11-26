@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase, publicUrl, type Tables } from '../../lib/supabase';
 import { useAdmin } from '../context';
 import { go } from '../router';
-import { PageHeader, Section, Field, Loading, Empty, StatusBadge, useToast, confirmDelete } from '../ui/kit';
+import { PageHeader, Section, Field, Loading, Empty, StatusBadge, useToast, confirmDelete, FileButton } from '../ui/kit';
 import { TranslationTabs, useEnglishNames, useLangCompleteness, LangDots, LangLegend } from '../ui/TranslationTabs';
 import { uploadMedia } from '../ui/upload';
 
@@ -130,7 +130,7 @@ export function ArticleEditor({ id }: { id: string }) {
           <Section title="Cover image">
             {cover && <div className="aspect-[4/3] bg-surface rounded mb-2 grid place-items-center overflow-hidden"><img src={publicUrl(cover.bucket, cover.path)} alt="" className="max-h-full object-contain" /></div>}
             <p className="text-xs text-muted mb-1">Shown 4:3 without cropping.</p>
-            {can.edit && <input type="file" accept="image/*" aria-label="Upload cover image" onChange={(e) => onCover(e.target.files?.[0])} />}
+            {can.edit && <FileButton label={cover ? 'Replace image' : 'Upload image'} accept="image/*" onFiles={(f) => onCover(f[0])} />}
           </Section>
           <Section title="Topics">
             {cats.map((c) => <label key={c} className="flex gap-2 text-sm"><input type="checkbox" checked={mine.has(c)} disabled={!can.edit} onChange={(e) => toggleCat(c, e.target.checked)} />{catNames[c] ?? c.slice(0, 8)}</label>)}

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase, publicUrl, cents, toCents, type Tables } from '../../lib/supabase';
 import { useAdmin } from '../context';
 import { go } from '../router';
-import { PageHeader, Section, Field, Loading, Empty, StatusBadge, useToast, confirmDelete } from '../ui/kit';
+import { PageHeader, Section, Field, Loading, Empty, StatusBadge, useToast, confirmDelete, FileButton } from '../ui/kit';
 import { TranslationTabs, useEnglishNames, useLangCompleteness, LangDots, LangLegend } from '../ui/TranslationTabs';
 import { uploadMedia } from '../ui/upload';
 
@@ -159,7 +159,7 @@ export function CollectionEditor({ id }: { id: string }) {
           </Section>
           <Section title="Image (stacked covers)">
             {cover && <img src={publicUrl(cover.bucket, cover.path)} alt="Collection image" className="w-full rounded border border-line mb-2" />}
-            {can.edit && <input type="file" accept="image/*" aria-label="Upload collection image" onChange={(e) => onCover(e.target.files?.[0])} />}
+            {can.edit && <FileButton label={cover ? 'Replace image' : 'Upload image'} accept="image/*" onFiles={(f) => onCover(f[0])} />}
           </Section>
         </div>
       </div>

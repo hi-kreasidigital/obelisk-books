@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase, publicUrl, cents, toCents, type Tables } from '../../lib/supabase';
 import { useAdmin } from '../context';
 import { go } from '../router';
-import { PageHeader, Section, Field, Loading, Empty, StatusBadge, useToast, confirmDelete } from '../ui/kit';
+import { PageHeader, Section, Field, Loading, Empty, StatusBadge, useToast, confirmDelete, FileButton } from '../ui/kit';
 import { TranslationTabs, useEnglishNames, useLangCompleteness, LangDots, LangLegend } from '../ui/TranslationTabs';
 import { uploadMedia, uploadEbook } from '../ui/upload';
 import { generatePreview } from '../ui/preview';
@@ -94,7 +94,7 @@ export function BookEditor({ id }: { id: string }) {
   useEffect(() => { load(); supabase.from('collections').select('id').then(({ data }) => setCollections((data ?? []).map((c) => ({ id: c.id, name: '' })))); }, [id]);
 
   if (!book) return <Loading />;
-  const set = (patch: Partial<Book>) => setBook({ ...book, ...patch });
+  const set = (patch: Partial<Book>) => setBook((b) => (b ? { ...b, ...patch } : b));
 
   const save = async () => {
     const { id: _, created_at, updated_at, updated_by, ...rest } = book;
@@ -149,7 +149,8 @@ export function BookEditor({ id }: { id: string }) {
 
           <Section title="Cover">
             {cover ? <img src={publicUrl(cover.bucket, cover.path)} alt="Book cover" className="w-40 rounded border border-line mb-2" /> : <p className="text-sm text-muted mb-2">No cover yet.</p>}
-            {can.edit && <input type="file" accept="image/jpeg,image/png,image/webp" aria-label="Upload cover" onChange={(e) => onCover(e.target.files?.[0])} />}
+            {can.edit && <FileButton label={cover ? 'Replace cover' : 'Upload cover'} accept="image/jpeg,image/png,image/webp" onFiles={(f) => onCover(f[0])} />}
+            <p className="text-xs text-muted mt-2">JPG, PNG or WebP, at least 1000 px wide.</p>
           </Section>
 
           <Section title="Details">
@@ -228,7 +229,7 @@ function FormatCard({ format, coverUrl, onChange }: { format: Format; coverUrl: 
     seur: cents(format.sale_price_eur_cents), susd: cents(format.sale_price_usd_cents),
   });
   const [lowest, setLowest] = useState<{ eur: number | null; usd: number | null }>({ eur: null, usd: null });
-  const set = (p: Partial<Format>) => setF({ ...f, ...p });
+  const set = (p: Partial<Format>) => setF((cur) => ({ ...cur, ...p }));   // functional: two quick uploads must not overwrite each other
   const print = f.type !== 'ebook';
 
   useEffect(() => {
@@ -244,12 +245,19 @@ function FormatCard({ format, coverUrl, onChange }: { format: Format; coverUrl: 
     const eur = toCents(money.eur), usd = toCents(money.usd);
     if (eur == null || usd == null) return toast('Enter both EUR and USD prices', 'error');
     if (f.isbn13 && !/^97[89]\d{10}$/.test(f.isbn13)) return toast('ISBN-13 must be 13 digits starting with 978 or 979', 'error');
-    const { id, created_at, updated_at, updated_by, ...rest } = f;
+    // file paths and preview settings are saved by their own buttons — never overwrite them from this form
+    const { id, created_at, updated_at, updated_by, ebook_epub_path, ebook_pdf_path, preview_source, preview_page_from,
+      preview_page_count, preview_generated_at, ...rest } = f;
     const { error } = await supabase.from('formats').update({
       ...rest, isbn13: f.isbn13 || null, bookvault_sku: print ? f.bookvault_sku || null : null,
       price_eur_cents: eur, price_usd_cents: usd,
       sale_price_eur_cents: toCents(money.seur), sale_price_usd_cents: toCents(money.susd),
     }).eq('id', f.id);
+    if (error?.message.includes('formats_isbn13_key')) {
+      const { data: other } = await supabase.from('formats').select('type, books(internal_title)').eq('isbn13', f.isbn13!).neq('id', f.id).maybeSingle();
+      const where = other ? `the ${other.type} of “${(other as any).books?.internal_title ?? 'another book'}”` : 'another format';
+      return toast(`ISBN ${f.isbn13} is already used by ${where}. Each format (paperback, hardcover, ebook) needs its own ISBN.`, 'error');
+    }
     toast(error ? error.message : `${f.type} saved`, error ? 'error' : 'ok');
     if (!error) onChange();
   };
@@ -354,12 +362,17 @@ function EbookFiles({ format, coverUrl, onChange }: { format: Format; coverUrl: 
     <div className="mt-4 border-t border-line pt-3">
       <h4 className="font-semibold mb-2">Ebook files <span className="text-xs text-muted font-normal">(private — buyers receive both)</span></h4>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label={`EPUB ${format.ebook_epub_path ? '✓ ' + format.ebook_epub_path.split('/').pop() : '— not uploaded'}`}>
-          {can.edit && <input type="file" accept=".epub,application/epub+zip" onChange={(e) => upload(e.target.files?.[0], 'epub')} />}
-        </Field>
-        <Field label={`PDF ${format.ebook_pdf_path ? '✓ ' + format.ebook_pdf_path.split('/').pop() : '— not uploaded'}`}>
-          {can.edit && <input type="file" accept=".pdf,application/pdf" onChange={(e) => upload(e.target.files?.[0], 'pdf')} />}
-        </Field>
+        {(['epub', 'pdf'] as const).map((kind) => {
+          const path = kind === 'epub' ? format.ebook_epub_path : format.ebook_pdf_path;
+          return (
+            <div key={kind} className="rounded-md border border-line p-3">
+              <div className="text-sm font-semibold mb-1">{kind.toUpperCase()}</div>
+              <p className={`text-sm mb-2 break-all ${path ? 'text-teal-text' : 'text-muted'}`}>{path ? `✓ ${path.split('/').pop()}` : 'Not uploaded yet'}</p>
+              {can.edit && <FileButton label={path ? `Replace ${kind.toUpperCase()}` : `Upload ${kind.toUpperCase()}`}
+                accept={kind === 'epub' ? '.epub,application/epub+zip' : '.pdf,application/pdf'} onFiles={(f) => upload(f[0], kind)} />}
+            </div>
+          );
+        })}
       </div>
 
       <h4 className="font-semibold mt-4 mb-2">5-page preview</h4>

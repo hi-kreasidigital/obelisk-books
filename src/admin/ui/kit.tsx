@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
 /* ---------- toasts ---------- */
 type Toast = { id: number; text: string; kind: 'ok' | 'error' };
@@ -97,3 +97,27 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
 }
 
 export const confirmDelete = (what: string) => window.confirm(`Delete ${what}? This can't be undone.`);
+
+/* ---------- file upload button (styled, keyboard accessible) ---------- */
+export function FileButton({ label, accept, onFiles, multiple, primary, disabled }: {
+  label: string; accept: string; onFiles: (files: File[]) => void | Promise<void>; multiple?: boolean; primary?: boolean; disabled?: boolean;
+}) {
+  const [busy, setBusy] = useState(false);
+  const id = useRef(`file-${Math.random().toString(36).slice(2)}`).current;
+  return (
+    <span className="inline-block">
+      <input id={id} type="file" accept={accept} multiple={multiple} className="sr-only peer" disabled={disabled || busy}
+        onChange={async (e) => {
+          const files = Array.from(e.target.files ?? []);
+          e.target.value = '';                    // allow choosing the same file again
+          if (!files.length) return;
+          setBusy(true);
+          try { await onFiles(files); } finally { setBusy(false); }
+        }} />
+      <label htmlFor={id}
+        className={`${primary ? 'btn-primary' : 'btn'} cursor-pointer peer-focus-visible:outline-2 peer-focus-visible:outline-teal peer-disabled:opacity-50 peer-disabled:cursor-wait`}>
+        <span aria-hidden>⬆</span>{busy ? 'Uploading…' : label}
+      </label>
+    </span>
+  );
+}

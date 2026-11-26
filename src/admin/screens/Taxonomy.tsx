@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase, publicUrl, type Tables } from '../../lib/supabase';
 import { useAdmin } from '../context';
 import { go } from '../router';
-import { PageHeader, Section, Field, Loading, Empty, StatusBadge, useToast, confirmDelete } from '../ui/kit';
+import { PageHeader, Section, Field, Loading, Empty, StatusBadge, useToast, confirmDelete, FileButton } from '../ui/kit';
 import { TranslationTabs, useEnglishNames, useLangCompleteness, LangDots, LangLegend } from '../ui/TranslationTabs';
 import { uploadMedia } from '../ui/upload';
 
@@ -92,7 +92,7 @@ export function CategoryEditor({ id }: { id: string }) {
           </Section>
           <Section title="Topic tile image (optional)">
             {img && <img src={publicUrl(img.bucket, img.path)} alt="" className="w-full rounded mb-2" />}
-            {can.edit && <input type="file" accept="image/*" aria-label="Upload image" onChange={(e) => onImg(e.target.files?.[0])} />}
+            {can.edit && <FileButton label={img ? 'Replace image' : 'Upload image'} accept="image/*" onFiles={(f) => onImg(f[0])} />}
           </Section>
         </div>
       </div>
@@ -189,7 +189,7 @@ export function AuthorEditor({ id }: { id: string }) {
           </Section>
           <Section title="Portrait">
             {photo && <img src={publicUrl(photo.bucket, photo.path)} alt={`Portrait of ${a.name}`} className="w-32 h-32 object-cover rounded-full ring-4 ring-orange mb-2" />}
-            {can.edit && <input type="file" accept="image/*" aria-label="Upload portrait" onChange={(e) => onPhoto(e.target.files?.[0])} />}
+            {can.edit && <FileButton label={photo ? 'Replace portrait' : 'Upload portrait'} accept="image/*" onFiles={(f) => onPhoto(f[0])} />}
           </Section>
         </div>
       </div>
