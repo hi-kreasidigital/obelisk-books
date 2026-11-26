@@ -1,0 +1,37 @@
+{
+  "name": "obelisk-books",
+  "private": true,
+  "type": "module",
+  "version": "0.2.0",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "wrangler dev",
+    "check": "astro check",
+    "deploy": "astro build && wrangler deploy",
+    "types:db": "supabase gen types typescript --project-id dguapjsdwtyjxfcuukgs > src/lib/database.types.ts"
+  },
+  "dependencies": {
+    "@astrojs/react": "^7.1.9",
+    "@supabase/supabase-js": "^2.119.2",
+    "@tiptap/extension-image": "^3.35.0",
+    "@tiptap/extension-link": "^3.35.0",
+    "@tiptap/react": "^3.35.0",
+    "@tiptap/starter-kit": "^3.35.0",
+    "astro": "^7.4.13",
+    "epubjs": "^0.3.93",
+    "html-to-image": "^1.11.13",
+    "pdfjs-dist": "^5.7.284",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.12",
+    "@tailwindcss/vite": "^4.3.5",
+    "@types/react": "^19.3.3",
+    "@types/react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^6.0.3",
+    "wrangler": "^4.168.0"
+  }
+}

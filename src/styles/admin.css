@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@theme {
+  --color-teal: #007A82;        /* buttons, white text 5.1:1 */
+  --color-teal-text: #006E75;   /* links */
+  --color-teal-tint: #E6F4F5;
+  --color-orange: #D89616;      /* fills only, dark text */
+  --color-orange-tint: #FBF1DE;
+  --color-ink: #1C1C1C;
+  --color-muted: #4A4A4A;
+  --color-line: #DADADA;
+  --color-surface: #F5F5F3;
+  --color-sidebar: #1E2B2C;
+  --font-sans: "Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+html, body { @apply bg-surface text-ink; font-size: 15px; }
+:focus-visible { outline: 2px solid var(--color-teal); outline-offset: 2px; }
+
+
+@utility btn { @apply inline-flex items-center justify-center gap-2 rounded-md px-3 min-h-9 text-sm font-semibold border disabled:opacity-50 disabled:cursor-not-allowed border-line bg-white hover:bg-surface; }
+@utility btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-md px-3 min-h-9 text-sm font-semibold border disabled:opacity-50 disabled:cursor-not-allowed border-teal bg-teal text-white hover:bg-[#006A71]; }
+@utility btn-danger { @apply inline-flex items-center justify-center gap-2 rounded-md px-3 min-h-9 text-sm font-semibold border disabled:opacity-50 disabled:cursor-not-allowed border-red-200 bg-white text-red-700 hover:bg-red-50; }
+@utility btn-sm { @apply min-h-7 px-2 text-xs; }
+
+@layer components {
+  .input { @apply w-full rounded-md border border-line bg-white px-2.5 py-1.5 text-sm placeholder:text-gray-400 focus:border-teal focus:outline-none; }
+  .label { @apply block text-xs font-semibold text-muted mb-1; }
+  .card { @apply rounded-lg border border-line bg-white; }
+  .table { @apply w-full text-sm; }
+  .table th { @apply text-left text-xs font-semibold text-muted px-3 py-2 border-b border-line bg-surface sticky top-0; }
+  .table td { @apply px-3 py-2 border-b border-[#EEE] align-top; }
+  .badge { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold; }
+  .link { @apply text-teal-text underline-offset-2 hover:underline; }
+}

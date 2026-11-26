@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "obelisk-books",
+  "compatibility_date": "2026-11-26",
+  // Static assets only for now (no Worker code). Phase 4 adds the Worker for /api.
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page"
+  },
+  "workers_dev": true,
+  "preview_urls": true
+}
