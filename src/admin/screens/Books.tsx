@@ -3,7 +3,7 @@ import { supabase, publicUrl, cents, toCents, type Tables } from '../../lib/supa
 import { useAdmin } from '../context';
 import { go } from '../router';
 import { PageHeader, Section, Field, Loading, Empty, StatusBadge, useToast, confirmDelete } from '../ui/kit';
-import { TranslationTabs, useEnglishNames, useLangCompleteness, LangDots } from '../ui/TranslationTabs';
+import { TranslationTabs, useEnglishNames, useLangCompleteness, LangDots, LangLegend } from '../ui/TranslationTabs';
 import { uploadMedia, uploadEbook } from '../ui/upload';
 import { generatePreview } from '../ui/preview';
 
@@ -61,13 +61,14 @@ export function BooksList() {
                   <td><a className="link font-semibold" href={`#/books/${b.id}`}>{titles[b.id] ?? b.internal_title}</a></td>
                   <td className="space-x-1">{b.formats.map((f) => <span key={f.type} className="badge bg-surface">{f.type} €{cents(f.price_eur_cents)}</span>)}</td>
                   <td><StatusBadge status={b.status} /></td>
-                  <td><LangDots done={done[b.id] ?? []} /></td>
+                  <td><LangDots status={done[b.id] ?? {}} /></td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </div>
+      <LangLegend />
     </>
   );
 }

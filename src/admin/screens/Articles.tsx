@@ -3,7 +3,7 @@ import { supabase, publicUrl, type Tables } from '../../lib/supabase';
 import { useAdmin } from '../context';
 import { go } from '../router';
 import { PageHeader, Section, Field, Loading, Empty, StatusBadge, useToast, confirmDelete } from '../ui/kit';
-import { TranslationTabs, useEnglishNames, useLangCompleteness, LangDots } from '../ui/TranslationTabs';
+import { TranslationTabs, useEnglishNames, useLangCompleteness, LangDots, LangLegend } from '../ui/TranslationTabs';
 import { uploadMedia } from '../ui/upload';
 
 const FIELDS = [
@@ -42,10 +42,11 @@ export function ArticlesList() {
                 <td><a className="link font-semibold" href={`#/articles/${a.id}`}>{titles[a.id] ?? '(untitled)'}</a></td>
                 <td>{a.publish_at ? new Date(a.publish_at).toLocaleDateString('en-GB') : '—'}</td>
                 <td><StatusBadge status={a.status} />{a.status === 'published' && a.publish_at && new Date(a.publish_at) > new Date() && <span className="badge bg-orange-tint ml-1">scheduled</span>}</td>
-                <td><LangDots done={done[a.id] ?? []} /></td>
+                <td><LangDots status={done[a.id] ?? {}} /></td>
               </tr>))}</tbody></table>
         )}
       </div>
+      <LangLegend />
     </>
   );
 }

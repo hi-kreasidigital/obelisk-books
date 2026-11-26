@@ -3,7 +3,7 @@ import { supabase, publicUrl, cents, toCents, type Tables } from '../../lib/supa
 import { useAdmin } from '../context';
 import { go } from '../router';
 import { PageHeader, Section, Field, Loading, Empty, StatusBadge, useToast, confirmDelete } from '../ui/kit';
-import { TranslationTabs, useEnglishNames, useLangCompleteness, LangDots } from '../ui/TranslationTabs';
+import { TranslationTabs, useEnglishNames, useLangCompleteness, LangDots, LangLegend } from '../ui/TranslationTabs';
 import { uploadMedia } from '../ui/upload';
 
 const TEXT_FIELDS = [
@@ -38,10 +38,11 @@ export function CollectionsList() {
             <tbody>{rows.map((c) => (
               <tr key={c.id} className="hover:bg-surface cursor-pointer" onClick={() => go(`/collections/${c.id}`)}>
                 <td><a className="link font-semibold" href={`#/collections/${c.id}`}>{names[c.id] ?? '(no English name yet)'}</a></td>
-                <td>{c.books.length}</td><td><StatusBadge status={c.status} /></td><td><LangDots done={done[c.id] ?? []} /></td>
+                <td>{c.books.length}</td><td><StatusBadge status={c.status} /></td><td><LangDots status={done[c.id] ?? {}} /></td>
               </tr>))}</tbody></table>
         )}
       </div>
+      <LangLegend />
     </>
   );
 }

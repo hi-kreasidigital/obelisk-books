@@ -62,7 +62,10 @@ export function TranslationTabs({ table, fk, id, fields, onSaved }: {
       const { error } = await (supabase.from(table as any) as any).upsert(toSave, { onConflict: `${fk},lang` });
       if (error) { setSaving(false); return toast(error.message.includes('unique') ? 'This slug is already used in this language — choose another.' : error.message, 'error'); }
     }
-    setSaving(false); toast('Saved'); await load(); onSaved?.();
+    setSaving(false);
+    const notDone = toSave.filter((r) => !r.complete).map((r) => r.lang.toUpperCase());
+    toast(notDone.length ? `Saved. Not yet marked complete: ${notDone.join(', ')} — tick “translation complete” when ready.` : 'Saved');
+    await load(); onSaved?.();
   };
 
   const status = (code: string) => {
@@ -85,6 +88,10 @@ export function TranslationTabs({ table, fk, id, fields, onSaved }: {
         ))}
       </div>
       <div className="p-4 space-y-3">
+        <label className={`flex items-center gap-2 text-sm font-semibold rounded-md p-2 ${row.complete ? 'bg-teal-tint text-teal-text' : 'bg-orange-tint'}`}>
+          <input type="checkbox" checked={!!row.complete} disabled={!can.edit} onChange={(e) => set('complete', e.target.checked)} />
+          {lang === 'en' ? 'English' : enabledLangs.find((l) => l.code === lang)?.name_en} translation complete — show this language on the site
+        </label>
         {lang !== 'en' && rows.en && (
           <details className="text-sm bg-surface rounded p-2"><summary className="cursor-pointer text-muted">Show the English text</summary>
             <div className="mt-2 space-y-1">{fields.filter((f) => f.type !== 'slug').map((f) => (
@@ -113,10 +120,7 @@ export function TranslationTabs({ table, fk, id, fields, onSaved }: {
           );
         })}
         <div className="flex items-center justify-between pt-2 border-t border-line">
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={!!row.complete} disabled={!can.edit || !rows[lang]} onChange={(e) => set('complete', e.target.checked)} />
-            Translation complete — show this language on the site
-          </label>
+          <span className="text-xs text-muted">{dirty[lang] ? 'Unsaved changes' : ''}</span>
           {can.edit && <button className="btn-primary" onClick={save} disabled={saving || !Object.values(dirty).some(Boolean)}>Save texts</button>}
         </div>
       </div>
@@ -138,27 +142,39 @@ export function useEnglishNames(table: string, fk: string, field: string) {
 }
 
 export function useLangCompleteness(table: string, fk: string) {
-  const [m, setM] = useState<Record<string, string[]>>({});
+  const [m, setM] = useState<Record<string, Record<string, boolean>>>({});
   useEffect(() => {
-    (supabase.from(table as any) as any).select(`${fk},lang`).eq('complete', true).then(({ data }: any) => {
-      const r: Record<string, string[]> = {};
-      for (const x of data ?? []) (r[x[fk]] ??= []).push(x.lang);
+    (supabase.from(table as any) as any).select(`${fk},lang,complete`).then(({ data }: any) => {
+      const r: Record<string, Record<string, boolean>> = {};
+      for (const x of data ?? []) (r[x[fk]] ??= {})[x.lang] = !!x.complete;
       setM(r);
     });
   }, [table]);
   return m;
 }
 
-export function LangDots({ done }: { done: string[] }) {
+export function LangDots({ status }: { status: Record<string, boolean> }) {
   const { enabledLangs } = useAdmin();
+  const state = (c: string) => (status[c] ? 'complete' : c in status ? 'saved' : 'missing');
+  const cls = { complete: 'bg-teal-tint text-teal-text', saved: 'bg-orange-tint text-ink', missing: 'bg-gray-100 text-gray-400' } as const;
+  const word = { complete: 'complete', saved: 'saved, not marked complete', missing: 'not entered' } as const;
   return (
-    <span className="inline-flex gap-1" aria-label={`Complete: ${done.join(', ') || 'none'}`}>
+    <span className="inline-flex gap-1" aria-label={enabledLangs.map((l) => `${l.name_en}: ${word[state(l.code)]}`).join('; ')}>
       {enabledLangs.map((l) => (
-        <span key={l.code} title={`${l.name_en}: ${done.includes(l.code) ? 'complete' : 'not complete'}`}
-          className={`text-[10px] font-bold px-1 rounded ${done.includes(l.code) ? 'bg-teal-tint text-teal-text' : 'bg-gray-100 text-gray-400'}`}>
+        <span key={l.code} title={`${l.name_en}: ${word[state(l.code)]}`} className={`text-[10px] font-bold px-1 rounded ${cls[state(l.code)]}`}>
           {l.url_prefix || 'en'}
         </span>
       ))}
     </span>
+  );
+}
+
+export function LangLegend() {
+  return (
+    <p className="text-xs text-muted mt-2 flex flex-wrap gap-3">
+      <span><span className="badge bg-teal-tint text-teal-text">en</span> complete — shown on the site</span>
+      <span><span className="badge bg-orange-tint">fr</span> saved, not yet marked complete</span>
+      <span><span className="badge bg-gray-100 text-gray-400">de</span> not entered</span>
+    </p>
   );
 }
