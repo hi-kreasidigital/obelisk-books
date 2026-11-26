@@ -10,6 +10,7 @@ export type TField = {
   type?: 'text' | 'textarea' | 'rich' | 'slug';
   required?: boolean; max?: number; hint?: string;
   slugFrom?: string;          // for type 'slug': field to derive from
+  headings?: boolean;         // for type 'rich': allow H2/H3 inside the text (default true)
 };
 
 type Row = Record<string, any>;
@@ -101,7 +102,7 @@ export function TranslationTabs({ table, fk, id, fields, onSaved }: {
                 <textarea id={`${table}-${lang}-${f.name}`} className="input min-h-24" value={v} disabled={!can.edit} onChange={(e) => set(f.name, e.target.value)} />
               ) : f.type === 'rich' ? (
                 <Suspense fallback={<div className="input min-h-40">Loading editor…</div>}>
-                  <RichText key={`${lang}-${f.name}`} value={v} editable={can.edit} onChange={(html, json) => { set(f.name, html); if (f.name.endsWith('_html')) set(f.name.replace('_html', '_json'), json); }} />
+                  <RichText key={`${lang}-${f.name}`} value={v} editable={can.edit} headings={f.headings !== false} onChange={(html, json) => { set(f.name, html); if (f.name.endsWith('_html')) set(f.name.replace('_html', '_json'), json); }} />
                 </Suspense>
               ) : (
                 <input id={`${table}-${lang}-${f.name}`} className="input" value={v} disabled={!can.edit}

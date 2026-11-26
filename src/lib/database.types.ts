@@ -472,6 +472,8 @@ export type Database = {
           book_id: string
           complete: boolean
           description: string | null
+          heading_h2: string | null
+          heading_h3: string | null
           lang: string
           seo_description: string | null
           seo_title: string | null
@@ -485,6 +487,8 @@ export type Database = {
           book_id: string
           complete?: boolean
           description?: string | null
+          heading_h2?: string | null
+          heading_h3?: string | null
           lang: string
           seo_description?: string | null
           seo_title?: string | null
@@ -498,6 +502,8 @@ export type Database = {
           book_id?: string
           complete?: boolean
           description?: string | null
+          heading_h2?: string | null
+          heading_h3?: string | null
           lang?: string
           seo_description?: string | null
           seo_title?: string | null

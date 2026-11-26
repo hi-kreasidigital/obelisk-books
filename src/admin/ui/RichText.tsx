@@ -3,9 +3,9 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 
-export default function RichText({ value, onChange, editable = true }: { value: string; onChange: (html: string, json: unknown) => void; editable?: boolean }) {
+export default function RichText({ value, onChange, editable = true, headings = true }: { value: string; onChange: (html: string, json: unknown) => void; editable?: boolean; headings?: boolean }) {
   const editor = useEditor({
-    extensions: [StarterKit.configure({ link: false }), Link.configure({ openOnClick: false }), Image],
+    extensions: [StarterKit.configure({ link: false, ...(headings ? { heading: { levels: [2, 3] } } : { heading: false }) }), Link.configure({ openOnClick: false }), Image],
     content: value || '',
     editable,
     immediatelyRender: false,
@@ -20,9 +20,11 @@ export default function RichText({ value, onChange, editable = true }: { value: 
     <div className="rounded-md border border-line bg-white">
       {editable && (
         <div className="flex flex-wrap gap-1 border-b border-line p-1.5">
-          {b('Text', () => editor.chain().focus().setParagraph().run(), editor.isActive('paragraph'))}
-          {b('H2', () => editor.chain().focus().toggleHeading({ level: 2 }).run(), editor.isActive('heading', { level: 2 }))}
-          {b('H3', () => editor.chain().focus().toggleHeading({ level: 3 }).run(), editor.isActive('heading', { level: 3 }))}
+          {headings && <>
+            {b('Text', () => editor.chain().focus().setParagraph().run(), editor.isActive('paragraph'))}
+            {b('H2', () => editor.chain().focus().toggleHeading({ level: 2 }).run(), editor.isActive('heading', { level: 2 }))}
+            {b('H3', () => editor.chain().focus().toggleHeading({ level: 3 }).run(), editor.isActive('heading', { level: 3 }))}
+          </>}
           {b('Bold', () => editor.chain().focus().toggleBold().run(), editor.isActive('bold'))}
           {b('Italic', () => editor.chain().focus().toggleItalic().run(), editor.isActive('italic'))}
           {b('• List', () => editor.chain().focus().toggleBulletList().run(), editor.isActive('bulletList'))}

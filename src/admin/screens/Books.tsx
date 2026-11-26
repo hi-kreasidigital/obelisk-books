@@ -14,7 +14,9 @@ export const BOOK_TEXT_FIELDS = [
   { name: 'title', label: 'Title', required: true },
   { name: 'slug', label: 'URL slug', type: 'slug' as const, slugFrom: 'title', required: true, hint: 'Used in /books/{slug} and /ebooks/{slug} for this language.' },
   { name: 'subtitle', label: 'Subtitle' },
-  { name: 'description', label: 'Description', type: 'rich' as const },
+  { name: 'heading_h2', label: 'Heading (H2)', max: 70, hint: 'Optional. Shown above the description. Left empty, the page shows “Description”.' },
+  { name: 'heading_h3', label: 'Subheading (H3)', max: 90, hint: 'Optional. Shown under the heading.' },
+  { name: 'description', label: 'Description', type: 'rich' as const, headings: false, hint: 'Paragraphs, bold, italic, lists and links. Headings go in the fields above.' },
   { name: 'seo_title', label: 'Search-result title', max: 60, hint: 'Leave empty to use the standard template.' },
   { name: 'seo_description', label: 'Search-result description', type: 'textarea' as const, max: 155 },
 ];
